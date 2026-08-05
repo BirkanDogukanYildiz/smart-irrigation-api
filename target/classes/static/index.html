@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anasayfa — Bitki Sulama Yönetim Paneli</title>
+    <link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+    <div class="marka">
+        <span class="damla"></span>
+        <div><h1>Bitki Sulama Yönetim Paneli</h1></div>
+    </div>
+    <nav id="navKutusu"></nav>
+    <div id="kullaniciKutusu"></div>
+</header>
+
+<main>
+    <div class="bolum">
+        <h3>Sulama Cihazları</h3>
+        <p class="aciklama">Bölgedeki tüm sulama cihazlarının anlık durumu. Arızalı bir cihaz gördüğünde işaretle.</p>
+        <table>
+            <thead>
+            <tr><th>Bölge</th><th>İlçe</th><th>Cihaz No</th><th>Durum</th><th>Arıza Açıklaması</th><th></th></tr>
+            </thead>
+            <tbody id="cihazTablosu"></tbody>
+        </table>
+        <div id="cihazBos" class="bos-durum" style="display:none;">Henüz kayıtlı cihaz yok.</div>
+    </div>
+</main>
+
+<script src="common.js"></script>
+<script>
+    girisGerekli();
+    navKur('index.html');
+    cihazlariYukle();
+
+    async function cihazlariYukle(){
+        const govde = document.getElementById('cihazTablosu');
+        const bosUyari = document.getElementById('cihazBos');
+        govde.innerHTML = '';
+        try{
+            const liste = await apiCagir('/api/genel-tablo/list');
+            if(!liste || liste.length === 0){
+                bosUyari.style.display = 'block';
+                return;
+            }
+            bosUyari.style.display = 'none';
+            liste.forEach(cihaz => {
+                const arizaliMi = cihaz.durum === 'ARIZALI';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+        <td>${cihaz.bolge.bolgeAd}</td>
+        <td>${cihaz.bolge.ilceAd}</td>
+        <td>#${cihaz.sulamaCihazNo}</td>
+        <td><span class="durum-rozet ${cihaz.durum}"><span class="nokta"></span>${arizaliMi ? 'Arızalı' : 'Çalışıyor'}</span></td>
+        <td style="color:var(--metin-soluk);font-size:12.5px;">${arizaliMi ? (cihaz.aciklama || '—') : '—'}</td>
+        <td><button class="btn-toggle" data-id="${cihaz.id}" data-yenidurum="${arizaliMi ? 'CALISIYOR' : 'ARIZALI'}">
+              ${arizaliMi ? 'Çalışıyor olarak işaretle' : 'Arızalı olarak işaretle'}
+            </button></td>
+      `;
+                govde.appendChild(tr);
+            });
+            govde.querySelectorAll('.btn-toggle').forEach(btn => {
+                btn.addEventListener('click', () => durumDegistirTiklandi(btn.dataset.id, btn.dataset.yenidurum));
+            });
+        } catch(e){
+            bosUyari.textContent = 'Liste yüklenemedi: ' + e.message;
+            bosUyari.style.display = 'block';
+        }
+    }
+
+    function durumDegistirTiklandi(id, yeniDurum){
+        let aciklama = '';
+        if(yeniDurum === 'ARIZALI'){
+            aciklama = prompt('Arıza açıklaması gir (zorunlu):', '');
+            if(aciklama === null) return;
+            if(aciklama.trim() === ''){
+                alert('Arızalı olarak işaretlemek için açıklama girmen gerekiyor.');
+                return;
+            }
+        }
+        durumDegistir(id, yeniDurum, aciklama);
+    }
+
+    async function durumDegistir(id, yeniDurum, aciklama){
+        try{
+            await apiCagir('/api/genel-tablo/durum/' + id, {
+                method:'PUT',
+                body: JSON.stringify({durum: yeniDurum, aciklama: aciklama})
+            });
+            cihazlariYukle();
+        } catch(e){
+            alert('Durum güncellenemedi: ' + e.message);
+        }
+    }
+</script>
+</body>
+</html>

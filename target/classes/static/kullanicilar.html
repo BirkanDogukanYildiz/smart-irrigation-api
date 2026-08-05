@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kullanıcılar — Bitki Sulama Yönetim Paneli</title>
+    <link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+    <div class="marka">
+        <span class="damla"></span>
+        <div><h1>Bitki Sulama Yönetim Paneli</h1></div>
+    </div>
+    <nav id="navKutusu"></nav>
+    <div id="kullaniciKutusu"></div>
+</header>
+
+<main>
+    <div class="bolum">
+        <h3>Yeni Kullanıcı Ekle</h3>
+        <p class="aciklama">Sisteme yeni bir admin ya da bahçivan hesabı tanımla.</p>
+        <div class="form-grid">
+            <div><label>Kullanıcı Adı</label><input id="uUsername" type="text"></div>
+            <div><label>Şifre</label><input id="uPassword" type="password"></div>
+            <div>
+                <label>Rol</label>
+                <select id="uRole">
+                    <option value="BAHCIVAN">Bahçivan</option>
+                    <option value="ADMIN">Admin</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn-ekle" onclick="kullaniciEkle()">Kullanıcı Ekle</button>
+        <div class="basari-mesaji" id="kullaniciBasari"></div>
+    </div>
+</main>
+
+<script src="common.js"></script>
+<script>
+    girisGerekli();
+    adminGerekli();
+    navKur('kullanicilar.html');
+
+    async function kullaniciEkle(){
+        const basariKutu = document.getElementById('kullaniciBasari');
+        basariKutu.style.display = 'none';
+        const gövde = {
+            username: document.getElementById('uUsername').value.trim(),
+            password: document.getElementById('uPassword').value,
+            role: document.getElementById('uRole').value
+        };
+        try{
+            await apiCagir('/api/user/register', {method:'POST', body: JSON.stringify(gövde)});
+            basariKutu.textContent = 'Kullanıcı başarıyla oluşturuldu.';
+            basariKutu.style.display = 'block';
+            document.getElementById('uUsername').value = '';
+            document.getElementById('uPassword').value = '';
+        } catch(e){
+            alert('Kullanıcı eklenemedi: ' + e.message);
+        }
+    }
+</script>
+</body>
+</html>

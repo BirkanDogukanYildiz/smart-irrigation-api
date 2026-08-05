@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bölgeler — Bitki Sulama Yönetim Paneli</title>
+    <link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+    <div class="marka">
+        <span class="damla"></span>
+        <div><h1>Bitki Sulama Yönetim Paneli</h1></div>
+    </div>
+    <nav id="navKutusu"></nav>
+    <div id="kullaniciKutusu"></div>
+</header>
+
+<main>
+    <div class="bolum">
+        <h3>Bölgeler</h3>
+        <p class="aciklama">Kayıtlı tüm bölgeler. Bölge numarası sistem tarafından otomatik atanır.</p>
+        <table>
+            <thead>
+            <tr><th>Bölge No</th><th>Bölge Adı</th><th>İlçe</th><th>Sulama Alanı</th><th></th></tr>
+            </thead>
+            <tbody id="bolgeTablosu"></tbody>
+        </table>
+        <div id="bolgeBos" class="bos-durum" style="display:none;">Henüz kayıtlı bölge yok.</div>
+    </div>
+
+    <div class="bolum">
+        <h3>Yeni Bölge Ekle</h3>
+        <p class="aciklama">Bölge numarası sistem tarafından otomatik atanır, girmene gerek yok.</p>
+        <div class="form-grid">
+            <div><label>İlçe No</label><input id="bIlceNo" type="number"></div>
+            <div><label>İlçe Adı</label><input id="bIlceAd" type="text"></div>
+            <div><label>Bölge Adı</label><input id="bBolgeAd" type="text"></div>
+            <div><label>Sulama Alanı No</label><input id="bSulamaAlanNo" type="number"></div>
+            <div><label>Sulama Alanı Adı</label><input id="bSulamaAlanAd" type="text"></div>
+            <div class="satir-sonu"><label>Açıklama (opsiyonel)</label><input id="bAciklama" type="text"></div>
+        </div>
+        <button class="btn-ekle" onclick="bolgeEkle()">Bölge Ekle</button>
+        <div class="basari-mesaji" id="bolgeBasari"></div>
+    </div>
+</main>
+
+<script src="common.js"></script>
+<script>
+    girisGerekli();
+    adminGerekli();
+    navKur('bolgeler.html');
+    bolgeleriYukle();
+
+    async function bolgeleriYukle(){
+        const govde = document.getElementById('bolgeTablosu');
+        const bosUyari = document.getElementById('bolgeBos');
+        govde.innerHTML = '';
+        try{
+            const liste = await apiCagir('/api/bolge/list');
+            if(!liste || liste.length === 0){
+                bosUyari.style.display = 'block';
+                return;
+            }
+            bosUyari.style.display = 'none';
+            liste.forEach(bolge => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+        <td>#${bolge.bolgeNo}</td>
+        <td>${bolge.bolgeAd}</td>
+        <td>${bolge.ilceAd} (${bolge.ilceNo})</td>
+        <td>${bolge.sulamaAlanAd} (${bolge.sulamaAlanNo})</td>
+        <td><button class="btn-sil" data-id="${bolge.id}" data-ad="${bolge.bolgeAd}">Sil</button></td>
+      `;
+                govde.appendChild(tr);
+            });
+            govde.querySelectorAll('.btn-sil').forEach(btn => {
+                btn.addEventListener('click', () => bolgeSil(btn.dataset.id, btn.dataset.ad));
+            });
+        } catch(e){
+            bosUyari.textContent = 'Liste yüklenemedi: ' + e.message;
+            bosUyari.style.display = 'block';
+        }
+    }
+
+    async function bolgeSil(id, ad){
+        if(!confirm(`"${ad}" bölgesini silmek istediğine emin misin?`)) return;
+        try{
+            await apiCagir('/api/bolge/delete/' + id, {method:'DELETE'});
+            bolgeleriYukle();
+        } catch(e){
+            alert('Bölge silinemedi: ' + e.message);
+        }
+    }
+
+    async function bolgeEkle(){
+        const basariKutu = document.getElementById('bolgeBasari');
+        basariKutu.style.display = 'none';
+        const gövde = {
+            ilceNo: Number(document.getElementById('bIlceNo').value),
+            ilceAd: document.getElementById('bIlceAd').value.trim(),
+            bolgeAd: document.getElementById('bBolgeAd').value.trim(),
+            sulamaAlanNo: Number(document.getElementById('bSulamaAlanNo').value),
+            sulamaAlanAd: document.getElementById('bSulamaAlanAd').value.trim(),
+            aciklama: document.getElementById('bAciklama').value.trim()
+        };
+        try{
+            await apiCagir('/api/bolge/save', {method:'POST', body: JSON.stringify(gövde)});
+            basariKutu.textContent = 'Bölge başarıyla eklendi.';
+            basariKutu.style.display = 'block';
+            ['bIlceNo','bIlceAd','bBolgeAd','bSulamaAlanNo','bSulamaAlanAd','bAciklama'].forEach(id => document.getElementById(id).value = '');
+            bolgeleriYukle();
+        } catch(e){
+            alert('Bölge eklenemedi: ' + e.message);
+        }
+    }
+</script>
+</body>
+</html>

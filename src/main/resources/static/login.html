@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giriş — Bitki Sulama Yönetim Paneli</title>
+    <link rel="stylesheet" href="common.css">
+</head>
+<body>
+<main style="display:flex;min-height:100vh;align-items:center;justify-content:center;">
+    <div class="giris-kart">
+        <h2>Giriş Yap</h2>
+        <p>Devam etmek için kullanıcı adı ve şifreni gir.</p>
+        <div class="hata-mesaji" id="girisHata"></div>
+        <label for="lUsername">Kullanıcı Adı</label>
+        <input id="lUsername" type="text" placeholder="admin">
+        <label for="lPassword">Şifre</label>
+        <input id="lPassword" type="password" placeholder="••••">
+        <button class="btn-birincil" onclick="girisYap()">Giriş Yap</button>
+        <div class="yardimci-hesaplar">
+            Test hesapları — <code>admin / 1234</code> · <code>bahcivan / 1234</code>
+        </div>
+    </div>
+</main>
+
+<script src="common.js"></script>
+<script>
+    // Zaten giriş yapmışsa direkt anasayfaya at
+    if(getToken()) window.location.href = 'index.html';
+
+    async function girisYap(){
+        const hataKutu = document.getElementById('girisHata');
+        hataKutu.style.display = 'none';
+        const username = document.getElementById('lUsername').value.trim();
+        const password = document.getElementById('lPassword').value;
+        try{
+            const yanit = await apiCagir('/api/auth/login', {
+                method:'POST',
+                body: JSON.stringify({username, password})
+            });
+            localStorage.setItem('token', yanit.token);
+            localStorage.setItem('role', yanit.role);
+            localStorage.setItem('username', yanit.username);
+            window.location.href = 'index.html';
+        } catch(e){
+            hataKutu.textContent = 'Giriş başarısız: kullanıcı adı veya şifre hatalı.';
+            hataKutu.style.display = 'block';
+        }
+    }
+</script>
+</body>
+</html>
