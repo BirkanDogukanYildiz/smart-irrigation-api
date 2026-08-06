@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface SprinklerInfoRepository extends JpaRepository<SprinklerInfo, Long> {
     long countByRegionId(Long regionId);
+    long countByStatus(com.belediye.bitkisulama.enums.Status status);
 }

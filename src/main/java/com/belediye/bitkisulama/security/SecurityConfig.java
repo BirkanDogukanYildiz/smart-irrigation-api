@@ -50,6 +50,7 @@ public class SecurityConfig {
                         // Herkese açık uç noktalar
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole("ADMIN", "GARDENER")
                         .requestMatchers("/", "/*.html", "/*.css", "/*.js", "/favicon.ico").permitAll()
 
                         // Kullanıcı yönetimi sadece ADMIN

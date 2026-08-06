@@ -120,3 +120,34 @@ tr:last-child td{border-bottom:none;}
 @media (prefers-reduced-motion: reduce){
     .durum-rozet.FAULTY .nokta{animation:none;}
 }
+/* Dashboard İstatistik Kartları */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.stat-card {
+    background: var(--panel);
+    border: 1px solid var(--kenar);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 12px -6px rgba(22,48,42,.15);
+}
+.stat-card .baslik {
+    font-size: 13px;
+    color: var(--metin-soluk);
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+.stat-card .deger {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--koyu);
+}
+.stat-card.arizali .deger {
+    color: var(--arizali);
+}
