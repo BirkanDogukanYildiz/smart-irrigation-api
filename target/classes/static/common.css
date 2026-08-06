@@ -49,7 +49,7 @@ nav a.aktif{background:#ffffff22;color:#fff;}
     letter-spacing:.4px;text-transform:uppercase;
 }
 .rozet.ADMIN{background:#3a5a8c33;color:#bcd2ff;border:1px solid #3a5a8c;}
-.rozet.BAHCIVAN{background:#2f8f5b33;color:#b7e4c7;border:1px solid #2f8f5b;}
+.rozet.GARDENER{background:#2f8f5b33;color:#b7e4c7;border:1px solid #2f8f5b;}
 button{
     font-family:inherit;cursor:pointer;border:none;border-radius:8px;
     padding:9px 16px;font-size:13px;font-weight:600;transition:transform .08s ease, opacity .15s ease;
@@ -86,7 +86,7 @@ input:focus, select:focus{outline:2px solid var(--su);outline-offset:1px;}
     padding:22px 24px;margin-bottom:22px;
 }
 .bolum h3{margin:0 0 4px;font-size:15px;}
-.bolum .aciklama{margin:0 0 18px;font-size:12.5px;color:var(--metin-soluk);}
+.bolum .subtitle{margin:0 0 18px;font-size:12.5px;color:var(--metin-soluk);}
 table{width:100%;border-collapse:collapse;font-size:13.5px;}
 th{
     text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;
@@ -98,10 +98,10 @@ tr:last-child td{border-bottom:none;}
     display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;
     padding:4px 10px;border-radius:20px;letter-spacing:.3px;
 }
-.durum-rozet.CALISIYOR{background:#e6f4ec;color:var(--calisir);}
-.durum-rozet.ARIZALI{background:#fbeae4;color:var(--arizali);}
+.durum-rozet.WORKING{background:#e6f4ec;color:var(--calisir);}
+.durum-rozet.FAULTY{background:#fbeae4;color:var(--arizali);}
 .nokta{width:7px;height:7px;border-radius:50%;background:currentColor;}
-.durum-rozet.ARIZALI .nokta{animation:pulse 1.4s infinite;}
+.durum-rozet.FAULTY .nokta{animation:pulse 1.4s infinite;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
 .btn-toggle{background:var(--zemin);color:var(--metin);font-size:12px;padding:7px 12px;}
 .btn-toggle:hover{background:#dfe7e0;}
@@ -118,5 +118,5 @@ tr:last-child td{border-bottom:none;}
     padding:8px 12px;border-radius:8px;font-size:12.5px;margin-top:12px;display:none;
 }
 @media (prefers-reduced-motion: reduce){
-    .durum-rozet.ARIZALI .nokta{animation:none;}
+    .durum-rozet.FAULTY .nokta{animation:none;}
 }

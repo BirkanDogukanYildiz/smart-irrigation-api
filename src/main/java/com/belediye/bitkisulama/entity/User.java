@@ -1,5 +1,6 @@
 package com.belediye.bitkisulama.entity;
 
+import com.belediye.bitkisulama.enums.Role;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

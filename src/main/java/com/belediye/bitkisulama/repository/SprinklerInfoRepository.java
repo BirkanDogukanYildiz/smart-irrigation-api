@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SprinklerInfoRepository extends JpaRepository<SprinklerInfo, Long> {
-    long countByBolgeId(Long bolgeId);
+    long countByRegionId(Long regionId);
 }

@@ -9,26 +9,26 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class BolgeRequestDto {
+public class RegionRequestDto {
 
     @NotNull(message = "İlçe numarası null olamaz!")
     @Positive(message = "İlçe numarası pozitif olmalı!")
-    private Integer ilceNo;
+    private Integer districtNo;
 
     @NotBlank(message = "İlçe adı boş olamaz!")
-    private String ilceAd;
+    private String districtName;
 
-    // bolgeNo artık burada YOK: sistem tarafından otomatik atanıyor (BolgeService.saveBolge)
+    // regionNo artık burada YOK: sistem tarafından otomatik atanıyor (RegionService.saveRegion)
 
     @NotBlank(message = "Bölge adı boş olamaz!")
-    private String bolgeAd;
+    private String regionName;
 
     @NotNull(message = "Sulama alanı numarası null olamaz!")
     @Positive(message = "Sulama alanı numarası pozitif olmalı!")
-    private Integer sulamaAlanNo;
+    private Integer irrigationAreaNo;
 
     @NotBlank(message = "Sulama alanı adı boş olamaz!")
-    private String sulamaAlanAd;
+    private String irrigationAreaName;
 
-    private String aciklama;
+    private String description;
 }

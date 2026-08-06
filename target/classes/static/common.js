@@ -5,68 +5,68 @@ function getRole(){ return localStorage.getItem('role'); }
 function getUsername(){ return localStorage.getItem('username'); }
 
 // Her korumalı sayfanın en başında çağrılır: token yoksa login'e atar
-function girisGerekli(){
+function requireLogin(){
     if(!getToken()){
         window.location.href = 'login.html';
     }
 }
 
 // Sadece admin sayfalarında çağrılır: rol admin değilse anasayfaya atar
-function adminGerekli(){
+function requireAdmin(){
     if(getRole() !== 'ADMIN'){
         window.location.href = 'index.html';
     }
 }
 
-function cikisYap(){
+function logout(){
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('username');
     window.location.href = 'login.html';
 }
 
-async function apiCagir(yol, secenekler={}){
-    const headers = Object.assign({'Content-Type':'application/json'}, secenekler.headers || {});
+async function apiCall(path, options={}){
+    const headers = Object.assign({'Content-Type':'application/json'}, options.headers || {});
     const token = getToken();
     if(token) headers['Authorization'] = 'Bearer ' + token;
-    const res = await fetch(API + yol, Object.assign({}, secenekler, {headers}));
+    const res = await fetch(API + path, Object.assign({}, options, {headers}));
     if(res.status === 401){
-        cikisYap();
+        logout();
         throw new Error('Oturum sona erdi, tekrar giriş yap.');
     }
-    const metin = await res.text();
-    let veri = null;
-    try { veri = metin ? JSON.parse(metin) : null; } catch(e){ veri = metin; }
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch(e){ data = text; }
     if(!res.ok){
-        const mesaj = (veri && veri.message) ? veri.message : (typeof veri === 'string' ? veri : 'Bir hata oluştu.');
-        throw new Error(mesaj);
+        const message = (data && data.message) ? data.message : (typeof data === 'string' ? data : 'Bir hata oluştu.');
+        throw new Error(message);
     }
-    return veri;
+    return data;
 }
 
-// Her sayfanın <header> içindeki #navKutusu ve #kullaniciKutusu'nu doldurur
-function navKur(aktifSayfa){
-    const adminMi = getRole() === 'ADMIN';
-    const linkler = [
-        {href:'index.html', etiket:'Anasayfa', sadeceAdmin:false},
-        {href:'bolgeler.html', etiket:'Bölgeler', sadeceAdmin:true},
-        {href:'cihazlar.html', etiket:'Cihazlar', sadeceAdmin:true},
-        {href:'kullanicilar.html', etiket:'Kullanıcılar', sadeceAdmin:true},
+// Her sayfanın <header> içindeki #navBox ve #userBox'unu doldurur
+function setupNav(activePage){
+    const isAdmin = getRole() === 'ADMIN';
+    const links = [
+        {href:'index.html', label:'Anasayfa', adminOnly:false},
+        {href:'bolgeler.html', label:'Bölgeler', adminOnly:true},
+        {href:'cihazlar.html', label:'Cihazlar', adminOnly:true},
+        {href:'kullanicilar.html', label:'Kullanıcılar', adminOnly:true},
     ];
-    const navKutu = document.getElementById('navKutusu');
-    if(navKutu){
-        navKutu.innerHTML = linkler
-            .filter(l => !l.sadeceAdmin || adminMi)
-            .map(l => `<a href="${l.href}" class="${l.href === aktifSayfa ? 'aktif' : ''}">${l.etiket}</a>`)
+    const navBox = document.getElementById('navBox');
+    if(navBox){
+        navBox.innerHTML = links
+            .filter(l => !l.adminOnly || isAdmin)
+            .map(l => `<a href="${l.href}" class="${l.href === activePage ? 'aktif' : ''}">${l.label}</a>`)
             .join('');
     }
 
-    const kullaniciKutusu = document.getElementById('kullaniciKutusu');
-    if(kullaniciKutusu){
-        kullaniciKutusu.innerHTML = `
+    const userBox = document.getElementById('userBox');
+    if(userBox){
+        userBox.innerHTML = `
       <span>${getUsername()}</span>
       <span class="rozet ${getRole()}">${getRole() === 'ADMIN' ? 'Admin' : 'Bahçivan'}</span>
-      <button class="btn-cikis" onclick="cikisYap()">Çıkış Yap</button>
+      <button class="btn-cikis" onclick="logout()">Çıkış Yap</button>
     `;
     }
 }

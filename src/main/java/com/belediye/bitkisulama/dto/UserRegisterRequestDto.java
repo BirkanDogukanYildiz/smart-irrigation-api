@@ -1,6 +1,6 @@
 package com.belediye.bitkisulama.dto;
 
-import com.belediye.bitkisulama.entity.Role;
+import com.belediye.bitkisulama.enums.Role;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -18,6 +18,6 @@ public class UserRegisterRequestDto {
     @Size(min = 4, message = "Şifre en az 4 karakter olmalı!")
     private String password;
 
-    @NotNull(message = "Rol boş olamaz! (ADMIN veya BAHCIVAN)")
+    @NotNull(message = "Rol boş olamaz! (ADMIN veya GARDENER)")
     private Role role;
 }

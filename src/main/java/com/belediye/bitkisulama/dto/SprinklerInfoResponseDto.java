@@ -1,6 +1,6 @@
 package com.belediye.bitkisulama.dto;
 
-import com.belediye.bitkisulama.entity.Durum;
+import com.belediye.bitkisulama.enums.Status;
 import lombok.*;
 
 @Getter
@@ -10,8 +10,8 @@ import lombok.*;
 public class SprinklerInfoResponseDto {
 
     private Long id;
-    private BolgeResponseDto bolge;
-    private Integer sulamaCihazNo;
-    private Durum durum;
-    private String aciklama;
+    private RegionResponseDto region;
+    private Integer deviceNo;
+    private Status status;
+    private String description;
 }

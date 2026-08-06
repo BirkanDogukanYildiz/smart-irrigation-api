@@ -31,8 +31,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(hatalar);
     }
 
-    @ExceptionHandler(BolgeNotFoundException.class)
-    public ResponseEntity<String> handleBolgeNotFound(BolgeNotFoundException ex) {
+    @ExceptionHandler(RegionNotFoundException.class)
+    public ResponseEntity<String> handleRegionNotFound(RegionNotFoundException ex) {
         log.warn("Bölge bulunamadı hatası: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
@@ -56,8 +56,8 @@ public class GlobalExceptionHandler {
         log.warn("Kimlik doğrulama hatası: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Kullanıcı adı veya şifre hatalı.");
     }
-    @ExceptionHandler(BolgeSilinemezException.class)
-    public ResponseEntity<String> handleBolgeSilinemez(BolgeSilinemezException ex) {
+    @ExceptionHandler(RegionCanNotDeleteException.class)
+    public ResponseEntity<String> handleRegionCanNotDelete(RegionCanNotDeleteException ex) {
         log.warn("Bölge silme engellendi: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }

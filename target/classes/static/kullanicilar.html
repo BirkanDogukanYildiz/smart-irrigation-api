@@ -3,63 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kullanıcılar — Bitki Sulama Yönetim Paneli</title>
+    <title>Kullanıcılar - Bitki Sulama Yönetim Paneli</title>
     <link rel="stylesheet" href="common.css">
 </head>
 <body>
+
 <header>
     <div class="marka">
-        <span class="damla"></span>
-        <div><h1>Bitki Sulama Yönetim Paneli</h1></div>
+        <div class="damla"></div>
+        <h1>Bitki Sulama Yönetim Paneli</h1>
     </div>
-    <nav id="navKutusu"></nav>
-    <div id="kullaniciKutusu"></div>
+    <nav id="navBox"></nav>
+    <div id="userBox"></div>
 </header>
 
 <main>
+    <!-- Kullanıcı Ekle Bölümü -->
     <div class="bolum">
         <h3>Yeni Kullanıcı Ekle</h3>
-        <p class="aciklama">Sisteme yeni bir admin ya da bahçivan hesabı tanımla.</p>
-        <div class="form-grid">
-            <div><label>Kullanıcı Adı</label><input id="uUsername" type="text"></div>
-            <div><label>Şifre</label><input id="uPassword" type="password"></div>
-            <div>
-                <label>Rol</label>
-                <select id="uRole">
-                    <option value="BAHCIVAN">Bahçivan</option>
-                    <option value="ADMIN">Admin</option>
-                </select>
+        <p class="subtitle">Sisteme yeni bir admin ya da bahçivan hesabı tanımla.</p>
+
+        <div id="ekleHata" class="hata-mesaji"></div>
+        <div id="ekleBasari" class="basari-mesaji"></div>
+
+        <form id="ekleForm">
+            <div class="form-grid">
+                <div>
+                    <label>Kullanıcı Adı</label>
+                    <input type="text" id="regUsername" required>
+                </div>
+                <div>
+                    <label>Şifre</label>
+                    <input type="password" id="regPassword" minlength="4" required>
+                </div>
+                <div>
+                    <label>Rol</label>
+                    <select id="regRole" required>
+                        <option value="GARDENER">Bahçivan</option>
+                        <option value="ADMIN">Admin</option>
+                    </select>
+                </div>
             </div>
-        </div>
-        <button class="btn-ekle" onclick="kullaniciEkle()">Kullanıcı Ekle</button>
-        <div class="basari-mesaji" id="kullaniciBasari"></div>
+            <button type="submit" class="btn-birincil btn-ekle" style="margin-top: 10px;">Kullanıcı Ekle</button>
+        </form>
+    </div>
+
+    <!-- Kullanıcıları Listeleme Bölümü -->
+    <div class="bolum">
+        <h3>Kayıtlı Kullanıcılar</h3>
+        <p class="subtitle">Sistemdeki tüm kullanıcıları görüntüle ve yönet.</p>
+
+        <div id="silHata" class="hata-mesaji"></div>
+        <div id="silBasari" class="basari-mesaji"></div>
+
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Kullanıcı Adı</th>
+                <th>Rol</th>
+                <th>İşlemler</th>
+            </tr>
+            </thead>
+            <tbody id="kullaniciTablosu">
+            <tr><td colspan="4" class="bos-durum">Kullanıcılar yükleniyor...</td></tr>
+            </tbody>
+        </table>
     </div>
 </main>
 
 <script src="common.js"></script>
 <script>
-    girisGerekli();
-    adminGerekli();
-    navKur('kullanicilar.html');
+    // Güvenlik ve Navbar
+    requireLogin();
+    requireAdmin();
+    setupNav('kullanicilar.html');
 
-    async function kullaniciEkle(){
-        const basariKutu = document.getElementById('kullaniciBasari');
-        basariKutu.style.display = 'none';
-        const gövde = {
-            username: document.getElementById('uUsername').value.trim(),
-            password: document.getElementById('uPassword').value,
-            role: document.getElementById('uRole').value
-        };
-        try{
-            await apiCagir('/api/user/register', {method:'POST', body: JSON.stringify(gövde)});
-            basariKutu.textContent = 'Kullanıcı başarıyla oluşturuldu.';
-            basariKutu.style.display = 'block';
-            document.getElementById('uUsername').value = '';
-            document.getElementById('uPassword').value = '';
-        } catch(e){
-            alert('Kullanıcı eklenemedi: ' + e.message);
+    // ---- KULLANICILARI TABLOYA ÇEKME ----
+    async function kullanicilariYukle() {
+        try {
+            const users = await apiCall('/api/user/list');
+            const tbody = document.getElementById('kullaniciTablosu');
+
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="bos-durum">Kayıtlı kullanıcı bulunamadı.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => {
+                // Kullanıcı giriş yapan kişiyle aynıysa silme butonunu gösterme
+                const isSelf = u.username === getUsername();
+                const islemHtml = isSelf
+                    ? `<span style="font-size: 11px; color: var(--metin-soluk); font-weight: 600;">SENİN HESABIN</span>`
+                    : `<button class="btn-sil" onclick="kullaniciSil('${u.username}')">Sil</button>`;
+
+                return `
+                        <tr>
+                            <td>#${u.id}</td>
+                            <td><strong>${u.username}</strong></td>
+                            <td><span class="rozet ${u.role}">${u.role === 'ADMIN' ? 'Admin' : 'Bahçivan'}</span></td>
+                            <td>${islemHtml}</td>
+                        </tr>
+                    `;
+            }).join('');
+        } catch (err) {
+            document.getElementById('kullaniciTablosu').innerHTML = `<tr><td colspan="4" class="hata-mesaji">${err.message}</td></tr>`;
         }
     }
+
+    // Sayfa açıldığında kullanıcıları yükle
+    kullanicilariYukle();
+
+    // ---- KULLANICI EKLEME ----
+    document.getElementById('ekleForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const username = document.getElementById('regUsername').value.trim();
+        const password = document.getElementById('regPassword').value;
+        const role = document.getElementById('regRole').value;
+
+        const hataKutusu = document.getElementById('ekleHata');
+        const basariKutusu = document.getElementById('ekleBasari');
+
+        hataKutusu.style.display = 'none';
+        basariKutusu.style.display = 'none';
+
+        try {
+            const response = await apiCall('/api/user/register', {
+                method: 'POST',
+                body: JSON.stringify({ username, password, role })
+            });
+
+            basariKutusu.textContent = `'${response.username}' başarıyla eklendi.`;
+            basariKutusu.style.display = 'block';
+            document.getElementById('ekleForm').reset();
+
+            // Tabloyu güncelle
+            kullanicilariYukle();
+        } catch (err) {
+            hataKutusu.textContent = err.message;
+            hataKutusu.style.display = 'block';
+        }
+    });
+
+    // ---- KULLANICI SİLME (TABLODAKİ BUTONLARDAN TETİKLENİR) ----
+    window.kullaniciSil = async function(username) {
+        const hataKutusu = document.getElementById('silHata');
+        const basariKutusu = document.getElementById('silBasari');
+
+        document.getElementById('ekleHata').style.display = 'none';
+        document.getElementById('ekleBasari').style.display = 'none';
+        hataKutusu.style.display = 'none';
+        basariKutusu.style.display = 'none';
+
+        if(!confirm(`'${username}' adlı kullanıcıyı silmek istediğinize emin misiniz?`)) return;
+
+        try {
+            const response = await apiCall('/api/user/delete', {
+                method: 'DELETE',
+                body: JSON.stringify({ username: username })
+            });
+
+            basariKutusu.textContent = `'${response.username}' başarıyla silindi.`;
+            basariKutusu.style.display = 'block';
+
+            // Sildikten sonra tabloyu yenile
+            kullanicilariYukle();
+        } catch (err) {
+            hataKutusu.textContent = err.message;
+            hataKutusu.style.display = 'block';
+        }
+    };
 </script>
 </body>
 </html>

@@ -1,12 +1,18 @@
 package com.belediye.bitkisulama.service;
 
+import com.belediye.bitkisulama.dto.UserDeleteRequestDto;
+import com.belediye.bitkisulama.dto.UserDeleteResponseDto;
 import com.belediye.bitkisulama.dto.UserRegisterRequestDto;
 import com.belediye.bitkisulama.dto.UserResponseDto;
 import com.belediye.bitkisulama.entity.User;
 import com.belediye.bitkisulama.exception.UsernameAlreadyExistsException;
 import com.belediye.bitkisulama.repository.UserRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,5 +52,29 @@ public class UserService {
         return userRepository.findAll().stream()
                 .map(this::toDto)
                 .toList();
+    }
+
+    private UserDeleteResponseDto toDeleteDto(User entity) {
+        UserDeleteResponseDto dto = new UserDeleteResponseDto();
+        dto.setId(entity.getId());
+        dto.setUsername(entity.getUsername());
+        dto.setRole(entity.getRole());
+        return dto;
+    }
+    @Transactional
+    public UserDeleteResponseDto deleteUser(UserDeleteRequestDto dto) {
+        User user = userRepository.findByUsername(dto.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("Silinmek istenen '" + dto.getUsername() + "' adlı kullanıcı bulunamadı!"));
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getName().equals(user.getUsername())) {
+            throw new IllegalArgumentException("Kendi hesabını silemezsin!");
+        }
+
+        UserDeleteResponseDto deletedUserDto = toDeleteDto(user);
+        userRepository.delete(user);
+        log.info("Kullanıcı silindi: id={}, username={}", user.getId(), user.getUsername());
+
+        return deletedUserDto;
     }
 }

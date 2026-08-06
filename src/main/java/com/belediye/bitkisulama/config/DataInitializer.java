@@ -1,6 +1,6 @@
 package com.belediye.bitkisulama.config;
 
-import com.belediye.bitkisulama.entity.Role;
+import com.belediye.bitkisulama.enums.Role;
 import com.belediye.bitkisulama.entity.User;
 import com.belediye.bitkisulama.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         createIfNotExists("admin", "1234", Role.ADMIN);
-        createIfNotExists("bahcivan", "1234", Role.BAHCIVAN);
+        createIfNotExists("bahcivan", "1234", Role.GARDENER);
     }
 
     private void createIfNotExists(String username, String rawPassword, Role role) {

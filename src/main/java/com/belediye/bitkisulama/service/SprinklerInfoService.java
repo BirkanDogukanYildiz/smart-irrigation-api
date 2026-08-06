@@ -1,10 +1,10 @@
 package com.belediye.bitkisulama.service;
 
-import com.belediye.bitkisulama.dto.BolgeResponseDto;
+import com.belediye.bitkisulama.dto.RegionResponseDto;
 import com.belediye.bitkisulama.dto.SprinklerInfoRequestDto;
 import com.belediye.bitkisulama.dto.SprinklerInfoResponseDto;
-import com.belediye.bitkisulama.entity.Bolge;
-import com.belediye.bitkisulama.entity.Durum;
+import com.belediye.bitkisulama.entity.Region;
+import com.belediye.bitkisulama.enums.Status;
 import com.belediye.bitkisulama.entity.SprinklerInfo;
 import com.belediye.bitkisulama.exception.DeviceNotFoundException;
 import com.belediye.bitkisulama.repository.SprinklerInfoRepository;
@@ -21,39 +21,39 @@ import java.util.List;
 public class SprinklerInfoService {
 
     private final SprinklerInfoRepository sprinklerInfoRepository;
-    private final BolgeService bolgeService;
+    private final RegionService regionService;
 
     // ---- YARDIMCI (private) METODLAR ----
 
     private SprinklerInfo toEntity(SprinklerInfoRequestDto dto) {
-        Bolge bolge = bolgeService.getBolgeEntity(dto.getBolgeId());
+        Region region = regionService.getRegionEntity(dto.getRegionId());
 
         SprinklerInfo entity = new SprinklerInfo();
-        entity.setBolge(bolge);
-        entity.setSulamaCihazNo(dto.getSulamaCihazNo());
-        entity.setDurum(Durum.CALISIYOR); // yeni cihaz her zaman "çalışıyor" olarak başlar
+        entity.setRegion(region);
+        entity.setDeviceNo(dto.getDeviceNo());
+        entity.setStatus(Status.WORKING); // yeni cihaz her zaman "çalışıyor" olarak başlar
         return entity;
     }
 
     private SprinklerInfoResponseDto toDto(SprinklerInfo entity) {
-        Bolge bolge = entity.getBolge();
-        BolgeResponseDto bolgeDto = new BolgeResponseDto(
-                bolge.getId(),
-                bolge.getIlceNo(),
-                bolge.getIlceAd(),
-                bolge.getBolgeNo(),
-                bolge.getBolgeAd(),
-                bolge.getSulamaAlanNo(),
-                bolge.getSulamaAlanAd(),
-                bolge.getAciklama()
+        Region region = entity.getRegion();
+        RegionResponseDto regionDto = new RegionResponseDto(
+                region.getId(),
+                region.getDistrictNo(),
+                region.getDistrictName(),
+                region.getRegionNo(),
+                region.getRegionName(),
+                region.getIrrigationAreaNo(),
+                region.getIrrigationAreaName(),
+                region.getDescription()
         );
 
         return new SprinklerInfoResponseDto(
                 entity.getId(),
-                bolgeDto,
-                entity.getSulamaCihazNo(),
-                entity.getDurum(),
-                entity.getAciklama()
+                regionDto,
+                entity.getDeviceNo(),
+                entity.getStatus(),
+                entity.getDescription()
         );
     }
 
@@ -62,7 +62,7 @@ public class SprinklerInfoService {
     @Transactional
     public SprinklerInfoResponseDto deviceSave(SprinklerInfoRequestDto dto) {
         SprinklerInfo saved = sprinklerInfoRepository.save(toEntity(dto));
-        log.info("Yeni cihaz kaydedildi: id={}, bolgeId={}", saved.getId(), dto.getBolgeId());
+        log.info("Yeni cihaz kaydedildi: id={}, regionId={}", saved.getId(), dto.getRegionId());
         return toDto(saved);
     }
 
@@ -102,9 +102,9 @@ public class SprinklerInfoService {
         SprinklerInfo devicePresent = sprinklerInfoRepository.findById(id)
                 .orElseThrow(() -> new DeviceNotFoundException(id));
 
-        Bolge bolge = bolgeService.getBolgeEntity(updatedInfo.getBolgeId());
-        devicePresent.setBolge(bolge);
-        devicePresent.setSulamaCihazNo(updatedInfo.getSulamaCihazNo());
+        Region region = regionService.getRegionEntity(updatedInfo.getRegionId());
+        devicePresent.setRegion(region);
+        devicePresent.setDeviceNo(updatedInfo.getDeviceNo());
 
         SprinklerInfo saved = sprinklerInfoRepository.save(devicePresent);
         log.info("Cihaz güncellendi: id={}", saved.getId());
@@ -113,20 +113,20 @@ public class SprinklerInfoService {
 
     // Bahçivanın/adminin kullandığı: durum + (arızalıysa) açıklama değiştirme
     @Transactional
-    public SprinklerInfoResponseDto updateDurum(Long id, Durum yeniDurum, String aciklama) {
+    public SprinklerInfoResponseDto updateStatus(Long id, Status newStatus, String description) {
         SprinklerInfo device = sprinklerInfoRepository.findById(id)
                 .orElseThrow(() -> new DeviceNotFoundException(id));
 
-        if (yeniDurum == Durum.ARIZALI && (aciklama == null || aciklama.isBlank())) {
+        if (newStatus == Status.FAULTY && (description == null || description.isBlank())) {
             throw new IllegalArgumentException("Cihazı arızalı olarak işaretlerken açıklama girmek zorunludur!");
         }
 
-        device.setDurum(yeniDurum);
+        device.setStatus(newStatus);
         // Cihaz "çalışıyor" olarak işaretlenince eski arıza açıklaması temizlenir
-        device.setAciklama(yeniDurum == Durum.ARIZALI ? aciklama : null);
+        device.setDescription(newStatus == Status.FAULTY ? description : null);
 
         SprinklerInfo saved = sprinklerInfoRepository.save(device);
-        log.info("Cihaz durumu güncellendi: id={}, yeniDurum={}", saved.getId(), yeniDurum);
+        log.info("Cihaz durumu güncellendi: id={}, newStatus={}", saved.getId(), newStatus);
         return toDto(saved);
     }
 

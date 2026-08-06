@@ -11,12 +11,12 @@
     <div class="giris-kart">
         <h2>Giriş Yap</h2>
         <p>Devam etmek için kullanıcı adı ve şifreni gir.</p>
-        <div class="hata-mesaji" id="girisHata"></div>
-        <label for="lUsername">Kullanıcı Adı</label>
-        <input id="lUsername" type="text" placeholder="admin">
-        <label for="lPassword">Şifre</label>
-        <input id="lPassword" type="password" placeholder="••••">
-        <button class="btn-birincil" onclick="girisYap()">Giriş Yap</button>
+        <div class="hata-mesaji" id="loginError"></div>
+        <label for="loginUsername">Kullanıcı Adı</label>
+        <input id="loginUsername" type="text" placeholder="admin">
+        <label for="loginPassword">Şifre</label>
+        <input id="loginPassword" type="password" placeholder="••••">
+        <button class="btn-birincil" onclick="login()">Giriş Yap</button>
         <div class="yardimci-hesaplar">
             Test hesapları — <code>admin / 1234</code> · <code>bahcivan / 1234</code>
         </div>
@@ -28,23 +28,23 @@
     // Zaten giriş yapmışsa direkt anasayfaya at
     if(getToken()) window.location.href = 'index.html';
 
-    async function girisYap(){
-        const hataKutu = document.getElementById('girisHata');
-        hataKutu.style.display = 'none';
-        const username = document.getElementById('lUsername').value.trim();
-        const password = document.getElementById('lPassword').value;
+    async function login(){
+        const errorBox = document.getElementById('loginError');
+        errorBox.style.display = 'none';
+        const username = document.getElementById('loginUsername').value.trim();
+        const password = document.getElementById('loginPassword').value;
         try{
-            const yanit = await apiCagir('/api/auth/login', {
+            const response = await apiCall('/api/auth/login', {
                 method:'POST',
                 body: JSON.stringify({username, password})
             });
-            localStorage.setItem('token', yanit.token);
-            localStorage.setItem('role', yanit.role);
-            localStorage.setItem('username', yanit.username);
+            localStorage.setItem('token', response.token);
+            localStorage.setItem('role', response.role);
+            localStorage.setItem('username', response.username);
             window.location.href = 'index.html';
         } catch(e){
-            hataKutu.textContent = 'Giriş başarısız: kullanıcı adı veya şifre hatalı.';
-            hataKutu.style.display = 'block';
+            errorBox.textContent = 'Giriş başarısız: kullanıcı adı veya şifre hatalı.';
+            errorBox.style.display = 'block';
         }
     }
 </script>

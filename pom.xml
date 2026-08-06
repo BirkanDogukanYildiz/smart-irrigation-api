@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.belediye</groupId>
-    <artifactId>bitkisulama</artifactId>
+    <artifactId>smart-irrigation-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>bitkisulama</name>
     <description>bitkisulama</description>

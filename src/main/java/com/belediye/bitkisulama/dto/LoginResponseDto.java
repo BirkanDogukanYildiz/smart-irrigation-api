@@ -1,6 +1,6 @@
 package com.belediye.bitkisulama.dto;
 
-import com.belediye.bitkisulama.entity.Role;
+import com.belediye.bitkisulama.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

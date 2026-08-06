@@ -11,9 +11,9 @@ import lombok.*;
 public class SprinklerInfoRequestDto {
 
     @NotNull(message = "Bölge id boş olamaz!")
-    private Long bolgeId;
+    private Long regionId;
 
     @NotNull(message = "Sulama cihaz numarası null olamaz!")
     @Positive(message = "Sulama cihaz numarası pozitif olmalı!")
-    private Integer sulamaCihazNo;
+    private Integer deviceNo;
 }

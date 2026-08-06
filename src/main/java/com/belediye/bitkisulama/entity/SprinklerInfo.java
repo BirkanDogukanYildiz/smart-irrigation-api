@@ -1,5 +1,6 @@
 package com.belediye.bitkisulama.entity;
 
+import com.belediye.bitkisulama.enums.Status;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -9,8 +10,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "Sulama_Sistemi", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"bolge_id", "sulamaCihazNo"})
+@Table(name = "Irrigation_System", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"region_id", "deviceNo"})
 })
 public class SprinklerInfo {
 
@@ -19,18 +20,18 @@ public class SprinklerInfo {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bolge_id", nullable = false)
-    private Bolge bolge;
+    @JoinColumn(name = "region_id", nullable = false)
+    private Region region;
 
     @Column(unique = false, nullable = false)
-    private Integer sulamaCihazNo;
+    private Integer deviceNo;
 
     // Bahçivanın sistem üzerinden değiştirebildiği alan: cihaz çalışıyor mu, arızalı mı?
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private Durum durum = Durum.CALISIYOR;
+    private Status status = Status.WORKING;
 
-    // Sadece ARIZALI durumundayken doldurulur, cihaz düzelince temizlenir
+    // Sadece FAULTY durumundayken doldurulur, cihaz düzelince temizlenir
     @Column(length = 300)
-    private String aciklama;
+    private String description;
 }

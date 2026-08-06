@@ -12,104 +12,104 @@
         <span class="damla"></span>
         <div><h1>Bitki Sulama Yönetim Paneli</h1></div>
     </div>
-    <nav id="navKutusu"></nav>
-    <div id="kullaniciKutusu"></div>
+    <nav id="navBox"></nav>
+    <div id="userBox"></div>
 </header>
 
 <main>
     <div class="bolum">
         <h3>Bölgeler</h3>
-        <p class="aciklama">Kayıtlı tüm bölgeler. Bölge numarası sistem tarafından otomatik atanır.</p>
+        <p class="subtitle">Kayıtlı tüm bölgeler. Bölge numarası sistem tarafından otomatik atanır.</p>
         <table>
             <thead>
             <tr><th>Bölge No</th><th>Bölge Adı</th><th>İlçe</th><th>Sulama Alanı</th><th></th></tr>
             </thead>
-            <tbody id="bolgeTablosu"></tbody>
+            <tbody id="regionTable"></tbody>
         </table>
-        <div id="bolgeBos" class="bos-durum" style="display:none;">Henüz kayıtlı bölge yok.</div>
+        <div id="regionEmpty" class="bos-durum" style="display:none;">Henüz kayıtlı bölge yok.</div>
     </div>
 
     <div class="bolum">
         <h3>Yeni Bölge Ekle</h3>
-        <p class="aciklama">Bölge numarası sistem tarafından otomatik atanır, girmene gerek yok.</p>
+        <p class="subtitle">Bölge numarası sistem tarafından otomatik atanır, girmene gerek yok.</p>
         <div class="form-grid">
-            <div><label>İlçe No</label><input id="bIlceNo" type="number"></div>
-            <div><label>İlçe Adı</label><input id="bIlceAd" type="text"></div>
-            <div><label>Bölge Adı</label><input id="bBolgeAd" type="text"></div>
-            <div><label>Sulama Alanı No</label><input id="bSulamaAlanNo" type="number"></div>
-            <div><label>Sulama Alanı Adı</label><input id="bSulamaAlanAd" type="text"></div>
-            <div class="satir-sonu"><label>Açıklama (opsiyonel)</label><input id="bAciklama" type="text"></div>
+            <div><label>İlçe No</label><input id="rDistrictNo" type="number"></div>
+            <div><label>İlçe Adı</label><input id="rDistrictName" type="text"></div>
+            <div><label>Bölge Adı</label><input id="rRegionName" type="text"></div>
+            <div><label>Sulama Alanı No</label><input id="rIrrigationAreaNo" type="number"></div>
+            <div><label>Sulama Alanı Adı</label><input id="rIrrigationAreaName" type="text"></div>
+            <div class="satir-sonu"><label>Açıklama (opsiyonel)</label><input id="rDescription" type="text"></div>
         </div>
-        <button class="btn-ekle" onclick="bolgeEkle()">Bölge Ekle</button>
-        <div class="basari-mesaji" id="bolgeBasari"></div>
+        <button class="btn-ekle" onclick="addRegion()">Bölge Ekle</button>
+        <div class="basari-mesaji" id="regionSuccess"></div>
     </div>
 </main>
 
 <script src="common.js"></script>
 <script>
-    girisGerekli();
-    adminGerekli();
-    navKur('bolgeler.html');
-    bolgeleriYukle();
+    requireLogin();
+    requireAdmin();
+    setupNav('bolgeler.html');
+    loadRegions();
 
-    async function bolgeleriYukle(){
-        const govde = document.getElementById('bolgeTablosu');
-        const bosUyari = document.getElementById('bolgeBos');
-        govde.innerHTML = '';
+    async function loadRegions(){
+        const tableBody = document.getElementById('regionTable');
+        const emptyNotice = document.getElementById('regionEmpty');
+        tableBody.innerHTML = '';
         try{
-            const liste = await apiCagir('/api/bolge/list');
-            if(!liste || liste.length === 0){
-                bosUyari.style.display = 'block';
+            const list = await apiCall('/api/region/list');
+            if(!list || list.length === 0){
+                emptyNotice.style.display = 'block';
                 return;
             }
-            bosUyari.style.display = 'none';
-            liste.forEach(bolge => {
+            emptyNotice.style.display = 'none';
+            list.forEach(region => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-        <td>#${bolge.bolgeNo}</td>
-        <td>${bolge.bolgeAd}</td>
-        <td>${bolge.ilceAd} (${bolge.ilceNo})</td>
-        <td>${bolge.sulamaAlanAd} (${bolge.sulamaAlanNo})</td>
-        <td><button class="btn-sil" data-id="${bolge.id}" data-ad="${bolge.bolgeAd}">Sil</button></td>
+        <td>#${region.regionNo}</td>
+        <td>${region.regionName}</td>
+        <td>${region.districtName} (${region.districtNo})</td>
+        <td>${region.irrigationAreaName} (${region.irrigationAreaNo})</td>
+        <td><button class="btn-sil" data-id="${region.id}" data-ad="${region.regionName}">Sil</button></td>
       `;
-                govde.appendChild(tr);
+                tableBody.appendChild(tr);
             });
-            govde.querySelectorAll('.btn-sil').forEach(btn => {
-                btn.addEventListener('click', () => bolgeSil(btn.dataset.id, btn.dataset.ad));
+            tableBody.querySelectorAll('.btn-sil').forEach(btn => {
+                btn.addEventListener('click', () => deleteRegion(btn.dataset.id, btn.dataset.ad));
             });
         } catch(e){
-            bosUyari.textContent = 'Liste yüklenemedi: ' + e.message;
-            bosUyari.style.display = 'block';
+            emptyNotice.textContent = 'Liste yüklenemedi: ' + e.message;
+            emptyNotice.style.display = 'block';
         }
     }
 
-    async function bolgeSil(id, ad){
-        if(!confirm(`"${ad}" bölgesini silmek istediğine emin misin?`)) return;
+    async function deleteRegion(id, name){
+        if(!confirm(`"${name}" bölgesini silmek istediğine emin misin?`)) return;
         try{
-            await apiCagir('/api/bolge/delete/' + id, {method:'DELETE'});
-            bolgeleriYukle();
+            await apiCall('/api/region/delete/' + id, {method:'DELETE'});
+            loadRegions();
         } catch(e){
             alert('Bölge silinemedi: ' + e.message);
         }
     }
 
-    async function bolgeEkle(){
-        const basariKutu = document.getElementById('bolgeBasari');
-        basariKutu.style.display = 'none';
-        const gövde = {
-            ilceNo: Number(document.getElementById('bIlceNo').value),
-            ilceAd: document.getElementById('bIlceAd').value.trim(),
-            bolgeAd: document.getElementById('bBolgeAd').value.trim(),
-            sulamaAlanNo: Number(document.getElementById('bSulamaAlanNo').value),
-            sulamaAlanAd: document.getElementById('bSulamaAlanAd').value.trim(),
-            aciklama: document.getElementById('bAciklama').value.trim()
+    async function addRegion(){
+        const successBox = document.getElementById('regionSuccess');
+        successBox.style.display = 'none';
+        const body = {
+            districtNo: Number(document.getElementById('rDistrictNo').value),
+            districtName: document.getElementById('rDistrictName').value.trim(),
+            regionName: document.getElementById('rRegionName').value.trim(),
+            irrigationAreaNo: Number(document.getElementById('rIrrigationAreaNo').value),
+            irrigationAreaName: document.getElementById('rIrrigationAreaName').value.trim(),
+            description: document.getElementById('rDescription').value.trim()
         };
         try{
-            await apiCagir('/api/bolge/save', {method:'POST', body: JSON.stringify(gövde)});
-            basariKutu.textContent = 'Bölge başarıyla eklendi.';
-            basariKutu.style.display = 'block';
-            ['bIlceNo','bIlceAd','bBolgeAd','bSulamaAlanNo','bSulamaAlanAd','bAciklama'].forEach(id => document.getElementById(id).value = '');
-            bolgeleriYukle();
+            await apiCall('/api/region/save', {method:'POST', body: JSON.stringify(body)});
+            successBox.textContent = 'Bölge başarıyla eklendi.';
+            successBox.style.display = 'block';
+            ['rDistrictNo','rDistrictName','rRegionName','rIrrigationAreaNo','rIrrigationAreaName','rDescription'].forEach(id => document.getElementById(id).value = '');
+            loadRegions();
         } catch(e){
             alert('Bölge eklenemedi: ' + e.message);
         }

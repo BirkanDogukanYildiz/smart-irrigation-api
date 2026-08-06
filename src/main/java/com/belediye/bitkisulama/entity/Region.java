@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "Bolgeler")
-public class Bolge {
+@Table(name = "Regions")
+public class Region {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,25 +18,25 @@ public class Bolge {
 
     // Aynı ilçede birden fazla bölge olabildiği için artık unique DEĞİL
     @Column(nullable = false)
-    private Integer ilceNo;
+    private Integer districtNo;
 
     @Column(length = 50, nullable = false)
-    private String ilceAd;
+    private String districtName;
 
-    // Sistem tarafından otomatik atanır (BolgeService.saveBolge), bu yüzden unique kalmalı
+    // Sistem tarafından otomatik atanır (RegionService.saveRegion), bu yüzden unique kalmalı
     @Column(unique = true, nullable = false)
-    private Integer bolgeNo;
+    private Integer regionNo;
 
     @Column(length = 50, nullable = false)
-    private String bolgeAd;
+    private String regionName;
 
     // Eskiden "sokak" olan alan artık "sulama alanı" oldu
     @Column(nullable = false)
-    private Integer sulamaAlanNo;
+    private Integer irrigationAreaNo;
 
     @Column(length = 50, nullable = false)
-    private String sulamaAlanAd;
+    private String irrigationAreaName;
 
     @Column(length = 200)
-    private String aciklama;
+    private String description;
 }

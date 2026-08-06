@@ -1,5 +1,7 @@
 package com.belediye.bitkisulama.controller;
 
+import com.belediye.bitkisulama.dto.UserDeleteRequestDto;
+import com.belediye.bitkisulama.dto.UserDeleteResponseDto;
 import com.belediye.bitkisulama.dto.UserRegisterRequestDto;
 import com.belediye.bitkisulama.dto.UserResponseDto;
 import com.belediye.bitkisulama.service.UserService;
@@ -24,8 +26,13 @@ public class UserController {
         return userService.register(dto);
     }
 
+    @DeleteMapping("/delete")
+    public UserDeleteResponseDto deleteUser(@Valid @RequestBody UserDeleteRequestDto dto) {
+        return userService.deleteUser(dto);
+    }
     @GetMapping("/list")
     public List<UserResponseDto> listUsers() {
         return userService.listUsers();
     }
 }
+

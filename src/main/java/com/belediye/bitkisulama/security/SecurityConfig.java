@@ -56,15 +56,15 @@ public class SecurityConfig {
                         .requestMatchers("/api/user/**").hasRole("ADMIN")
 
                         // Bölge: okuma her iki role de açık, yazma sadece ADMIN
-                        .requestMatchers(HttpMethod.GET, "/api/bolge/**").hasAnyRole("ADMIN", "BAHCIVAN")
-                        .requestMatchers("/api/bolge/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/region/**").hasAnyRole("ADMIN", "GARDENER")
+                        .requestMatchers("/api/region/**").hasRole("ADMIN")
 
                         // Sulama cihazları: okuma her iki role açık
-                        .requestMatchers(HttpMethod.GET, "/api/genel-tablo/**").hasAnyRole("ADMIN", "BAHCIVAN")
-                        // Durum güncelleme (arızalı/çalışıyor işaretleme): ADMIN + BAHCIVAN
-                        .requestMatchers(HttpMethod.PUT, "/api/genel-tablo/durum/**").hasAnyRole("ADMIN", "BAHCIVAN")
+                        .requestMatchers(HttpMethod.GET, "/api/devices/**").hasAnyRole("ADMIN", "GARDENER")
+                        // Status güncelleme (arızalı/çalışıyor işaretleme): ADMIN + GARDENER
+                        .requestMatchers(HttpMethod.PUT, "/api/devices/status/**").hasAnyRole("ADMIN", "GARDENER")
                         // Cihaz ekleme/silme/tam güncelleme: sadece ADMIN
-                        .requestMatchers("/api/genel-tablo/**").hasRole("ADMIN")
+                        .requestMatchers("/api/devices/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated()
                 )

@@ -2,7 +2,7 @@ package com.belediye.bitkisulama.controller;
 
 import com.belediye.bitkisulama.dto.LoginRequestDto;
 import com.belediye.bitkisulama.dto.LoginResponseDto;
-import com.belediye.bitkisulama.entity.Role;
+import com.belediye.bitkisulama.enums.Role;
 import com.belediye.bitkisulama.entity.User;
 import com.belediye.bitkisulama.repository.UserRepository;
 import com.belediye.bitkisulama.security.JwtService;

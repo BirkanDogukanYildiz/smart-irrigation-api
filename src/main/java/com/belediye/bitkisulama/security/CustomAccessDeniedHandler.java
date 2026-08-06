@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.time.Instant;
 
-// Giriş yapmış ama bu işlem için yetkisi olmayan kullanıcılar (örn. BAHCIVAN'ın
+// Giriş yapmış ama bu işlem için yetkisi olmayan kullanıcılar (örn. GARDENER'ın
 // ADMIN'e özel bir uç noktaya erişmeye çalışması) için düzgün JSON + 403 döner.
 @Slf4j
 @Component

@@ -12,153 +12,153 @@
         <span class="damla"></span>
         <div><h1>Bitki Sulama Yönetim Paneli</h1></div>
     </div>
-    <nav id="navKutusu"></nav>
-    <div id="kullaniciKutusu"></div>
+    <nav id="navBox"></nav>
+    <div id="userBox"></div>
 </header>
 
 <main>
     <div class="bolum">
         <h3>Yeni Sulama Cihazı Ekle</h3>
-        <p class="aciklama">Var olan bir bölgeye yeni sulama cihazı bağla. Cihaz durumlarını görmek/değiştirmek için Anasayfa'ya git.</p>
+        <p class="subtitle">Var olan bir bölgeye yeni sulama cihazı bağla. Cihaz durumlarını görmek/değiştirmek için Anasayfa'ya git.</p>
         <div class="form-grid">
             <div>
                 <label>İlçe Seçiniz</label>
-                <select id="ilceSecim" onchange="ilceDegisti()">
+                <select id="districtSelect" onchange="onDistrictChange()">
                     <option value="">Önce İlçe Seçin...</option>
                 </select>
             </div>
             <div>
                 <label>Bölge Seçiniz</label>
-                <select id="bolgeSecim" onchange="bolgeDegisti()" disabled>
+                <select id="regionSelect" onchange="onRegionChange()" disabled>
                     <option value="">Önce İlçe Seçin...</option>
                 </select>
             </div>
             <div>
                 <label>Sulama Alanı Seçiniz</label>
-                <select id="alanSecim" disabled>
+                <select id="areaSelect" disabled>
                     <option value="">Önce Bölge Seçin...</option>
                 </select>
             </div>
             <div>
                 <label>Cihaz No</label>
-                <input id="cCihazNo" type="number" min="1">
+                <input id="deviceNoInput" type="number" min="1">
             </div>
         </div>
-        <button class="btn-ekle" onclick="cihazEkle()" style="margin-top: 16px;">Cihaz Ekle</button>
-        <div class="basari-mesaji" id="cihazBasari"></div>
+        <button class="btn-ekle" onclick="addDevice()" style="margin-top: 16px;">Cihaz Ekle</button>
+        <div class="basari-mesaji" id="deviceSuccess"></div>
     </div>
 </main>
 
 <script src="common.js"></script>
 <script>
-    girisGerekli();
-    adminGerekli();
-    navKur('cihazlar.html');
-    bolgeleriSeciciyeYukle();
+    requireLogin();
+    requireAdmin();
+    setupNav('cihazlar.html');
+    loadRegionsIntoSelectors();
 
-    let tumBolgeler = []; // API'den gelen veriyi hafızada tutacağız
+    let allRegions = []; // API'den gelen veriyi hafızada tutacağız
 
-    async function bolgeleriSeciciyeYukle(){
-        const ilceSecici = document.getElementById('ilceSecim');
+    async function loadRegionsIntoSelectors(){
+        const districtSelector = document.getElementById('districtSelect');
         try{
             // API'den listeyi çek
-            tumBolgeler = await apiCagir('/api/bolge/list');
+            allRegions = await apiCall('/api/region/list');
 
-            if(!tumBolgeler || tumBolgeler.length === 0){
-                ilceSecici.innerHTML = '<option>Önce bir bölge oluşturman gerekiyor</option>';
+            if(!allRegions || allRegions.length === 0){
+                districtSelector.innerHTML = '<option>Önce bir bölge oluşturman gerekiyor</option>';
                 return;
             }
 
             // Sadece benzersiz ilçe isimlerini filtrele
-            const benzersizIlceler = [...new Set(tumBolgeler.map(b => b.ilceAd))];
+            const uniqueDistricts = [...new Set(allRegions.map(r => r.districtName))];
 
-            ilceSecici.innerHTML = '<option value="">İlçe Seçiniz...</option>' +
-                benzersizIlceler.map(ilce => `<option value="${ilce}">${ilce}</option>`).join('');
+            districtSelector.innerHTML = '<option value="">İlçe Seçiniz...</option>' +
+                uniqueDistricts.map(district => `<option value="${district}">${district}</option>`).join('');
 
         } catch(e){
-            ilceSecici.innerHTML = '<option>Bölge listesi yüklenemedi</option>';
+            districtSelector.innerHTML = '<option>Bölge listesi yüklenemedi</option>';
         }
     }
 
     // İlçe seçildiğinde çalışacak fonksiyon
-    function ilceDegisti() {
-        const secilenIlce = document.getElementById('ilceSecim').value;
-        const bolgeSecici = document.getElementById('bolgeSecim');
-        const alanSecici = document.getElementById('alanSecim');
+    function onDistrictChange() {
+        const selectedDistrict = document.getElementById('districtSelect').value;
+        const regionSelector = document.getElementById('regionSelect');
+        const areaSelector = document.getElementById('areaSelect');
 
         // Alt kutuları sıfırla ve kilitle
-        alanSecici.innerHTML = '<option value="">Önce Bölge Seçin...</option>';
-        alanSecici.disabled = true;
+        areaSelector.innerHTML = '<option value="">Önce Bölge Seçin...</option>';
+        areaSelector.disabled = true;
 
-        if (!secilenIlce) {
-            bolgeSecici.innerHTML = '<option value="">Önce İlçe Seçin...</option>';
-            bolgeSecici.disabled = true;
+        if (!selectedDistrict) {
+            regionSelector.innerHTML = '<option value="">Önce İlçe Seçin...</option>';
+            regionSelector.disabled = true;
             return;
         }
 
         // Seçilen ilçeye ait benzersiz bölgeleri bul
-        const ilceyeAitBolgeler = tumBolgeler.filter(b => b.ilceAd === secilenIlce);
-        const benzersizBolgeler = [...new Set(ilceyeAitBolgeler.map(b => b.bolgeAd))];
+        const districtRegions = allRegions.filter(r => r.districtName === selectedDistrict);
+        const uniqueRegions = [...new Set(districtRegions.map(r => r.regionName))];
 
-        bolgeSecici.innerHTML = '<option value="">Bölge Seçiniz...</option>' +
-            benzersizBolgeler.map(bolge => `<option value="${bolge}">${bolge}</option>`).join('');
+        regionSelector.innerHTML = '<option value="">Bölge Seçiniz...</option>' +
+            uniqueRegions.map(region => `<option value="${region}">${region}</option>`).join('');
 
-        bolgeSecici.disabled = false; // Kilidi aç
+        regionSelector.disabled = false; // Kilidi aç
     }
 
     // Bölge seçildiğinde çalışacak fonksiyon
-    function bolgeDegisti() {
-        const secilenIlce = document.getElementById('ilceSecim').value;
-        const secilenBolge = document.getElementById('bolgeSecim').value;
-        const alanSecici = document.getElementById('alanSecim');
+    function onRegionChange() {
+        const selectedDistrict = document.getElementById('districtSelect').value;
+        const selectedRegion = document.getElementById('regionSelect').value;
+        const areaSelector = document.getElementById('areaSelect');
 
-        if (!secilenBolge) {
-            alanSecici.innerHTML = '<option value="">Önce Bölge Seçin...</option>';
-            alanSecici.disabled = true;
+        if (!selectedRegion) {
+            areaSelector.innerHTML = '<option value="">Önce Bölge Seçin...</option>';
+            areaSelector.disabled = true;
             return;
         }
 
         // Hem ilçesi hem bölgesi eşleşen sulama alanlarını bul
-        const uygunAlanlar = tumBolgeler.filter(b => b.ilceAd === secilenIlce && b.bolgeAd === secilenBolge);
+        const matchingAreas = allRegions.filter(r => r.districtName === selectedDistrict && r.regionName === selectedRegion);
 
         // Veritabanına kaydedilecek asıl "id" değeri burada "value" içine yazılır
-        alanSecici.innerHTML = '<option value="">Sulama Alanı Seçiniz...</option>' +
-            uygunAlanlar.map(alan => `<option value="${alan.id}">${alan.sulamaAlanAd}</option>`).join('');
+        areaSelector.innerHTML = '<option value="">Sulama Alanı Seçiniz...</option>' +
+            matchingAreas.map(area => `<option value="${area.id}">${area.irrigationAreaName}</option>`).join('');
 
-        alanSecici.disabled = false; // Kilidi aç
+        areaSelector.disabled = false; // Kilidi aç
     }
 
-    async function cihazEkle(){
-        const basariKutu = document.getElementById('cihazBasari');
-        basariKutu.style.display = 'none';
+    async function addDevice(){
+        const successBox = document.getElementById('deviceSuccess');
+        successBox.style.display = 'none';
 
-        // Artık bolgeId değerini en son seçilen Sulama Alanı kutusundan (alanSecim) alıyoruz
-        const secilenAlanId = document.getElementById('alanSecim').value;
-        const cihazNo = document.getElementById('cCihazNo').value;
+        // Artık regionId değerini en son seçilen Sulama Alanı kutusundan (areaSelect) alıyoruz
+        const selectedAreaId = document.getElementById('areaSelect').value;
+        const deviceNo = document.getElementById('deviceNoInput').value;
 
-        if(!secilenAlanId) {
+        if(!selectedAreaId) {
             alert("Lütfen bir sulama alanı seçin!");
             return;
         }
-        if(!cihazNo) {
+        if(!deviceNo) {
             alert("Lütfen cihaz numarasını girin!");
             return;
         }
 
-        const gövde = {
-            bolgeId: Number(secilenAlanId),
-            sulamaCihazNo: Number(cihazNo)
+        const body = {
+            regionId: Number(selectedAreaId),
+            deviceNo: Number(deviceNo)
         };
 
         try{
-            await apiCagir('/api/genel-tablo/save', {method:'POST', body: JSON.stringify(gövde)});
-            basariKutu.textContent = 'Cihaz başarıyla eklendi.';
-            basariKutu.style.display = 'block';
+            await apiCall('/api/devices/save', {method:'POST', body: JSON.stringify(body)});
+            successBox.textContent = 'Cihaz başarıyla eklendi.';
+            successBox.style.display = 'block';
 
             // Formu temizle
-            document.getElementById('cCihazNo').value = '';
-            document.getElementById('ilceSecim').value = '';
-            ilceDegisti(); // Alt kutuları tekrar sıfırlamak ve kilitlemek için tetikliyoruz
+            document.getElementById('deviceNoInput').value = '';
+            document.getElementById('districtSelect').value = '';
+            onDistrictChange(); // Alt kutuları tekrar sıfırlamak ve kilitlemek için tetikliyoruz
 
         } catch(e){
             alert('Cihaz eklenemedi: ' + e.message);

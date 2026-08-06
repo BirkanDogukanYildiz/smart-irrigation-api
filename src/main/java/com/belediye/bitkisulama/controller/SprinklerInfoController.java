@@ -1,6 +1,6 @@
 package com.belediye.bitkisulama.controller;
 
-import com.belediye.bitkisulama.dto.SprinklerDurumUpdateDto;
+import com.belediye.bitkisulama.dto.SprinklerStatusUpdateDto;
 import com.belediye.bitkisulama.dto.SprinklerInfoRequestDto;
 import com.belediye.bitkisulama.dto.SprinklerInfoResponseDto;
 import com.belediye.bitkisulama.service.SprinklerInfoService;
@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/genel-tablo")
+@RequestMapping("/api/devices")
 public class SprinklerInfoController {
 
     private final SprinklerInfoService sprinklerInfoService;
@@ -27,7 +27,7 @@ public class SprinklerInfoController {
         return sprinklerInfoService.deviceSaveAll(newSaveAll);
     }
     @GetMapping("/list")
-    public List<SprinklerInfoResponseDto> sprinklerDeviceGenaralTable() {
+    public List<SprinklerInfoResponseDto> sprinklerDeviceGeneralTable() {
         return sprinklerInfoService.sprinklerDeviceGeneral();
     }
     @DeleteMapping("/delete/{id}")
@@ -36,13 +36,13 @@ public class SprinklerInfoController {
         return id + " numaralı cihaz başarıyla silindi.";
     }
     @PutMapping("/update/{id}")
-    public SprinklerInfoResponseDto deviceUpdate(@PathVariable Long id, @Valid @RequestBody SprinklerInfoRequestDto guncelBilgiler) {
-        return sprinklerInfoService.deviceUpdate(id, guncelBilgiler);
+    public SprinklerInfoResponseDto deviceUpdate(@PathVariable Long id, @Valid @RequestBody SprinklerInfoRequestDto updatedInfo) {
+        return sprinklerInfoService.deviceUpdate(id, updatedInfo);
     }
-    // Bahçivanın kullandığı endpoint: durumu (ARIZALI / CALISIYOR) ve arızaysa açıklamayı günceller
-    @PutMapping("/durum/{id}")
-    public SprinklerInfoResponseDto deviceDurumUpdate(@PathVariable Long id, @Valid @RequestBody SprinklerDurumUpdateDto durumDto) {
-        return sprinklerInfoService.updateDurum(id, durumDto.getDurum(), durumDto.getAciklama());
+    // Bahçivanın kullandığı endpoint: durumu (FAULTY / WORKING) ve arızaysa açıklamayı günceller
+    @PutMapping("/status/{id}")
+    public SprinklerInfoResponseDto deviceStatusUpdate(@PathVariable Long id, @Valid @RequestBody SprinklerStatusUpdateDto statusDto) {
+        return sprinklerInfoService.updateStatus(id, statusDto.getStatus(), statusDto.getDescription());
     }
     @GetMapping("/device-info/{id}")
     public SprinklerInfoResponseDto deviceInfo(@PathVariable Long id) {
