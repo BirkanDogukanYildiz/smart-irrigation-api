@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>İşlem Geçmişi - Bitki Sulama Yönetim Paneli</title>
+  <link rel="stylesheet" href="common.css">
+</head>
+<body>
+
+<header>
+  <div class="marka">
+    <div class="damla"></div>
+    <h1>Bitki Sulama Yönetim Paneli</h1>
+  </div>
+  <nav id="navBox"></nav>
+  <div id="userBox"></div>
+</header>
+
+<main>
+  <div class="bolum">
+    <h3>Sistem İşlem Geçmişi (Audit Logs)</h3>
+    <p class="subtitle">Sistemdeki cihaz arıza ve onarım kayıtlarını zaman damgasıyla inceleyin.</p>
+
+    <table>
+      <thead>
+      <tr>
+        <th>Tarih / Saat</th>
+        <th>Kullanıcı</th>
+        <th>İşlem Türü</th>
+        <th>Detay</th>
+      </tr>
+      </thead>
+      <tbody id="logTablosu">
+      <tr><td colspan="4" class="bos-durum">Loglar yükleniyor...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script src="common.js"></script>
+<script>
+  requireLogin();
+  requireAdmin();
+  setupNav('loglar.html');
+
+  async function loglariYukle() {
+    try {
+      const logs = await apiCall('/api/logs/list');
+      const tbody = document.getElementById('logTablosu');
+
+      if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="bos-durum">Henüz sistemde kayıtlı bir işlem yok.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = logs.map(log => {
+        // Tarihi güzel bir formata çevirme
+        const tarih = new Date(log.timestamp).toLocaleString('tr-TR');
+
+        return `
+                        <tr>
+                            <td style="color: var(--metin-soluk); font-size: 12px;">${tarih}</td>
+                            <td><strong>${log.username}</strong></td>
+                            <td><span style="background: #eef2ee; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold;">${log.action}</span></td>
+                            <td>${log.details}</td>
+                        </tr>
+                    `;
+      }).join('');
+    } catch (err) {
+      document.getElementById('logTablosu').innerHTML = `<tr><td colspan="4" class="hata-mesaji">${err.message}</td></tr>`;
+    }
+  }
+
+  loglariYukle();
+</script>
+</body>
+</html>

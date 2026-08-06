@@ -3,188 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anasayfa — Bitki Sulama Yönetim Paneli</title>
+    <title>Anasayfa - Bitki Sulama Yönetim Paneli</title>
     <link rel="stylesheet" href="common.css">
 </head>
 <body>
+
 <header>
     <div class="marka">
-        <span class="damla"></span>
-        <div><h1>Bitki Sulama Yönetim Paneli</h1></div>
+        <div class="damla"></div>
+        <h1>Bitki Sulama Yönetim Paneli</h1>
     </div>
     <nav id="navBox"></nav>
     <div id="userBox"></div>
 </header>
 
 <main>
-    <!DOCTYPE html>
-    <html lang="tr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Anasayfa - Bitki Sulama Yönetim Paneli</title>
-        <link rel="stylesheet" href="common.css">
-    </head>
-    <body>
-
-    <header>
-        <div class="marka">
-            <div class="damla"></div>
-            <h1>Bitki Sulama Yönetim Paneli</h1>
+    <!-- İstatistik Dashboard Bölümü -->
+    <div class="stat-grid" id="istatistikKutulari">
+        <div class="stat-card">
+            <span class="baslik">Toplam Cihaz</span>
+            <span class="deger" id="stat-totalDevices">-</span>
         </div>
-        <nav id="navBox"></nav>
-        <div id="userBox"></div>
-    </header>
-
-    <main>
-        <!-- İstatistik Dashboard Bölümü -->
-        <div class="stat-grid" id="istatistikKutulari">
-            <div class="stat-card">
-                <span class="baslik">Toplam Cihaz</span>
-                <span class="deger" id="stat-totalDevices">-</span>
-            </div>
-            <div class="stat-card">
-                <span class="baslik">Çalışan Cihaz</span>
-                <span class="deger" id="stat-workingDevices" style="color: var(--calisir);">-</span>
-            </div>
-            <div class="stat-card arizali">
-                <span class="baslik">Arızalı Cihaz</span>
-                <span class="deger" id="stat-faultyDevices">-</span>
-            </div>
-            <div class="stat-card">
-                <span class="baslik">Toplam Bölge</span>
-                <span class="deger" id="stat-totalRegions">-</span>
-            </div>
-            <div class="stat-card">
-                <span class="baslik">Kayıtlı Kullanıcı</span>
-                <span class="deger" id="stat-totalUsers">-</span>
-            </div>
+        <div class="stat-card">
+            <span class="baslik">Çalışan Cihaz</span>
+            <span class="deger" id="stat-workingDevices" style="color: var(--calisir);">-</span>
         </div>
-
-        <div class="bolum">
-            <h3>Sulama Cihazları</h3>
-            <p class="subtitle">Bölgedeki tüm sulama cihazlarının anlık durumu. Arızalı bir cihaz gördüğünde işaretle.</p>
-
-            <div id="hataKutusu" class="hata-mesaji"></div>
-
-            <table>
-                <thead>
-                <tr>
-                    <th>Bölge</th>
-                    <th>İlçe</th>
-                    <th>Cihaz No</th>
-                    <th>Durum</th>
-                    <th>Arıza Açıklaması</th>
-                    <th>İşlemler</th>
-                </tr>
-                </thead>
-                <tbody id="cihazTablosu">
-                <tr><td colspan="6" class="bos-durum">Yükleniyor...</td></tr>
-                </tbody>
-            </table>
+        <div class="stat-card arizali">
+            <span class="baslik">Arızalı Cihaz</span>
+            <span class="deger" id="stat-faultyDevices">-</span>
         </div>
-    </main>
+        <div class="stat-card">
+            <span class="baslik">Toplam Bölge</span>
+            <span class="deger" id="stat-totalRegions">-</span>
+        </div>
+        <div class="stat-card">
+            <span class="baslik">Kayıtlı Kullanıcı</span>
+            <span class="deger" id="stat-totalUsers">-</span>
+        </div>
+    </div>
 
-    <script src="common.js"></script>
-    <script>
-        requireLogin();
-        setupNav('index.html');
-
-        // ---- İSTATİSTİKLERİ YÜKLE ----
-        async function istatistikleriYukle() {
-            try {
-                const stats = await apiCall('/api/dashboard/summary');
-                document.getElementById('stat-totalDevices').textContent = stats.totalDevices;
-                document.getElementById('stat-workingDevices').textContent = stats.workingDevices;
-                document.getElementById('stat-faultyDevices').textContent = stats.faultyDevices;
-                document.getElementById('stat-totalRegions').textContent = stats.totalRegions;
-                document.getElementById('stat-totalUsers').textContent = stats.totalUsers;
-            } catch(e) {
-                console.error("İstatistikler yüklenemedi", e);
-            }
-        }
-
-        // ---- CİHAZLARI YÜKLE ----
-        async function cihazlariYukle(){
-            try{
-                const cihazlar = await apiCall('/api/devices/list');
-                const tbody = document.getElementById('cihazTablosu');
-                if(!cihazlar || cihazlar.length === 0){
-                    tbody.innerHTML = `<tr><td colspan="6" class="bos-durum">Henüz kayıtlı cihaz yok.</td></tr>`;
-                    return;
-                }
-
-                tbody.innerHTML = cihazlar.map(c => {
-                    const durumHtml = c.status === 'WORKING'
-                        ? `<span class="durum-rozet WORKING"><div class="nokta"></div>Çalışıyor</span>`
-                        : `<span class="durum-rozet FAULTY"><div class="nokta"></div>Arızalı</span>`;
-
-                    const butonHtml = c.status === 'WORKING'
-                        ? `<button class="btn-toggle" onclick="arizaBildir(${c.id})">Arıza Bildir</button>`
-                        : `<button class="btn-toggle" onclick="calisiyorIsaretle(${c.id})">Çalışıyor İşaretle</button>`;
-
-                    return `
-                        <tr>
-                            <td>${c.region.regionName}</td>
-                            <td>${c.region.districtName}</td>
-                            <td><strong>${c.deviceNo}</strong></td>
-                            <td>${durumHtml}</td>
-                            <td style="color:var(--metin-soluk); font-size:12px;">${c.description || '-'}</td>
-                            <td>${butonHtml}</td>
-                        </tr>
-                    `;
-                }).join('');
-            } catch(e){
-                document.getElementById('hataKutusu').textContent = e.message;
-                document.getElementById('hataKutusu').style.display = 'block';
-            }
-        }
-
-        window.arizaBildir = async function(id){
-            const sebep = prompt("Arıza sebebini kısaca yazın (örn: Vana su sızdırıyor):");
-            if(!sebep) return;
-            try{
-                await apiCall(`/api/devices/status/${id}`, {
-                    method:'PUT',
-                    body: JSON.stringify({ status: 'FAULTY', description: sebep })
-                });
-                cihazlariYukle();
-                istatistikleriYukle(); // Durum değiştiği için istatistiği güncelle
-            }catch(e){
-                alert(e.message);
-            }
-        }
-
-        window.calisiyorIsaretle = async function(id){
-            if(!confirm("Cihazın onarıldığını ve tekrar çalışır duruma geldiğini onaylıyor musun?")) return;
-            try{
-                await apiCall(`/api/devices/status/${id}`, {
-                    method:'PUT',
-                    body: JSON.stringify({ status: 'WORKING' })
-                });
-                cihazlariYukle();
-                istatistikleriYukle(); // Durum değiştiği için istatistiği güncelle
-            }catch(e){
-                alert(e.message);
-            }
-        }
-
-        // Sayfa açıldığında her ikisini de çalıştır
-        istatistikleriYukle();
-        cihazlariYukle();
-    </script>
-    </body>
-    </html>
     <div class="bolum">
         <h3>Sulama Cihazları</h3>
         <p class="subtitle">Bölgedeki tüm sulama cihazlarının anlık durumu. Arızalı bir cihaz gördüğünde işaretle.</p>
+
+        <div id="hataKutusu" class="hata-mesaji"></div>
+
         <table>
             <thead>
-            <tr><th>Bölge</th><th>İlçe</th><th>Cihaz No</th><th>Durum</th><th>Arıza Açıklaması</th><th>İşlemler</th></tr>
+            <tr>
+                <th>Bölge</th>
+                <th>İlçe</th>
+                <th>Cihaz No</th>
+                <th>Durum</th>
+                <th>Arıza Açıklaması</th>
+                <th>İşlemler</th>
+            </tr>
             </thead>
-            <tbody id="deviceTable"></tbody>
+            <tbody id="cihazTablosu">
+            <tr><td colspan="6" class="bos-durum">Yükleniyor...</td></tr>
+            </tbody>
         </table>
-        <div id="deviceEmpty" class="bos-durum" style="display:none;">Henüz kayıtlı cihaz yok.</div>
     </div>
 </main>
 
@@ -192,96 +70,115 @@
 <script>
     requireLogin();
     setupNav('index.html');
-    loadDevices();
 
-    async function loadDevices(){
-        const tableBody = document.getElementById('deviceTable');
-        const emptyNotice = document.getElementById('deviceEmpty');
-        tableBody.innerHTML = '';
-
-        // Giriş yapan kullanıcının rolünü alıyoruz
-        const isAdmin = getRole() === 'ADMIN';
-
-        try{
-            const list = await apiCall('/api/devices/list');
-            if(!list || list.length === 0){
-                emptyNotice.style.display = 'block';
-                return;
-            }
-            emptyNotice.style.display = 'none';
-            list.forEach(device => {
-                const isFaulty = device.status === 'FAULTY';
-
-                // Eğer giren kişi ADMIN ise Çıkar (Sil) butonunu oluştur, BAHÇIVAN ise boş bırak
-                const deleteButton = isAdmin ?
-                    `<button class="btn-sil" style="margin-left: 8px;" onclick="deleteDevice(${device.id}, ${device.deviceNo})">Çıkar</button>`
-                    : '';
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-        <td>${device.region.regionName}</td>
-        <td>${device.region.districtName}</td>
-        <td>#${device.deviceNo}</td>
-        <td><span class="durum-rozet ${device.status}"><span class="nokta"></span>${isFaulty ? 'Arızalı' : 'Çalışıyor'}</span></td>
-        <td style="color:var(--metin-soluk);font-size:12.5px;">${isFaulty ? (device.description || '—') : '—'}</td>
-        <td>
-            <button class="btn-toggle" data-id="${device.id}" data-newstatus="${isFaulty ? 'WORKING' : 'FAULTY'}">
-              ${isFaulty ? 'Çalışıyor İşaretle' : 'Arızalı İşaretle'}
-            </button>
-            ${deleteButton}
-        </td>
-      `;
-                tableBody.appendChild(tr);
-            });
-
-            tableBody.querySelectorAll('.btn-toggle').forEach(btn => {
-                btn.addEventListener('click', () => onStatusToggleClick(btn.dataset.id, btn.dataset.newstatus));
-            });
-        } catch(e){
-            emptyNotice.textContent = 'Liste yüklenemedi: ' + e.message;
-            emptyNotice.style.display = 'block';
+    // ---- İSTATİSTİKLERİ YÜKLE ----
+    async function istatistikleriYukle() {
+        try {
+            const stats = await apiCall('/api/dashboard/summary');
+            document.getElementById('stat-totalDevices').textContent = stats.totalDevices;
+            document.getElementById('stat-workingDevices').textContent = stats.workingDevices;
+            document.getElementById('stat-faultyDevices').textContent = stats.faultyDevices;
+            document.getElementById('stat-totalRegions').textContent = stats.totalRegions;
+            document.getElementById('stat-totalUsers').textContent = stats.totalUsers;
+        } catch(e) {
+            console.error("İstatistikler yüklenemedi", e);
         }
     }
 
-    // YENİ EKLENEN ÇIKAR (SİL) FONKSİYONU
-    async function deleteDevice(id, deviceNo){
-        // Silmeden önce kullanıcıdan onay iste
-        if(!confirm(`#${deviceNo} numaralı sulama cihazını sistemden ÇIKARMAK istediğine emin misin?`)) return;
-
+    // ---- CİHAZLARI YÜKLE ----
+    async function cihazlariYukle(){
         try{
-            // Backend'e DELETE isteği atıyoruz
+            const cihazlar = await apiCall('/api/devices/list');
+            const tbody = document.getElementById('cihazTablosu');
+
+            if(!cihazlar || cihazlar.length === 0){
+                tbody.innerHTML = `<tr><td colspan="6" class="bos-durum">Henüz kayıtlı cihaz yok.</td></tr>`;
+                return;
+            }
+
+            // Kullanıcının rolünü al
+            const isAdmin = getRole() === 'ADMIN';
+
+            tbody.innerHTML = cihazlar.map(c => {
+                const durumHtml = c.status === 'WORKING'
+                    ? `<span class="durum-rozet WORKING"><div class="nokta"></div>Çalışıyor</span>`
+                    : `<span class="durum-rozet FAULTY"><div class="nokta"></div>Arızalı</span>`;
+
+                const butonHtml = c.status === 'WORKING'
+                    ? `<button class="btn-toggle" onclick="arizaBildir(${c.id})">Arıza Bildir</button>`
+                    : `<button class="btn-toggle" onclick="calisiyorIsaretle(${c.id})">Çalışıyor İşaretle</button>`;
+
+                // Admin ise Çıkar butonu ekle, değilse boş bırak
+                const silButonuHtml = isAdmin
+                    ? `<button class="btn-sil" style="margin-left: 8px;" onclick="cihazSil(${c.id}, ${c.deviceNo})">Çıkar</button>`
+                    : '';
+
+                return `
+                        <tr>
+                            <td>${c.region.regionName}</td>
+                            <td>${c.region.districtName}</td>
+                            <td><strong>#${c.deviceNo}</strong></td>
+                            <td>${durumHtml}</td>
+                            <td style="color:var(--metin-soluk); font-size:12.5px;">${c.description || '—'}</td>
+                            <td>${butonHtml} ${silButonuHtml}</td>
+                        </tr>
+                    `;
+            }).join('');
+        } catch(e){
+            document.getElementById('hataKutusu').textContent = e.message;
+            document.getElementById('hataKutusu').style.display = 'block';
+        }
+    }
+
+    // ---- CİHAZ DURUM DEĞİŞTİRME ----
+    window.arizaBildir = async function(id){
+        const sebep = prompt("Arıza sebebini kısaca yazın (örn: Vana su sızdırıyor):");
+        if(!sebep) return;
+        if(sebep.trim() === ''){
+            alert('Arızalı olarak işaretlemek için açıklama girmeniz gerekiyor.');
+            return;
+        }
+        try{
+            await apiCall(`/api/devices/status/${id}`, {
+                method:'PUT',
+                body: JSON.stringify({ status: 'FAULTY', description: sebep })
+            });
+            cihazlariYukle();
+            istatistikleriYukle();
+        }catch(e){
+            alert('Durum güncellenemedi: ' + e.message);
+        }
+    }
+
+    window.calisiyorIsaretle = async function(id){
+        if(!confirm("Cihazın onarıldığını ve tekrar çalışır duruma geldiğini onaylıyor musun?")) return;
+        try{
+            await apiCall(`/api/devices/status/${id}`, {
+                method:'PUT',
+                body: JSON.stringify({ status: 'WORKING' })
+            });
+            cihazlariYukle();
+            istatistikleriYukle();
+        }catch(e){
+            alert('Durum güncellenemedi: ' + e.message);
+        }
+    }
+
+    // ---- CİHAZ SİLME (SADECE ADMİN) ----
+    window.cihazSil = async function(id, deviceNo){
+        if(!confirm(`#${deviceNo} numaralı sulama cihazını sistemden ÇIKARMAK istediğine emin misin?`)) return;
+        try{
             await apiCall('/api/devices/delete/' + id, {method:'DELETE'});
-            // Silme başarılıysa listeyi yenile
-            loadDevices();
+            cihazlariYukle();
+            istatistikleriYukle();
         } catch(e){
             alert('Cihaz çıkarılamadı: ' + e.message);
         }
     }
 
-    function onStatusToggleClick(id, newStatus){
-        let description = '';
-        if(newStatus === 'FAULTY'){
-            description = prompt('Arıza açıklaması gir (zorunlu):', '');
-            if(description === null) return;
-            if(description.trim() === ''){
-                alert('Arızalı olarak işaretlemek için açıklama girmen gerekiyor.');
-                return;
-            }
-        }
-        changeStatus(id, newStatus, description);
-    }
-
-    async function changeStatus(id, newStatus, description){
-        try{
-            await apiCall('/api/devices/status/' + id, {
-                method:'PUT',
-                body: JSON.stringify({status: newStatus, description: description})
-            });
-            loadDevices();
-        } catch(e){
-            alert('Durum güncellenemedi: ' + e.message);
-        }
-    }
+    // Sayfa açıldığında her ikisini de çalıştır
+    istatistikleriYukle();
+    cihazlariYukle();
 </script>
 </body>
 </html>

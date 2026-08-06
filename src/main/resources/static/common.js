@@ -52,6 +52,7 @@ function setupNav(activePage){
         {href:'bolgeler.html', label:'Bölgeler', adminOnly:true},
         {href:'cihazlar.html', label:'Cihazlar', adminOnly:true},
         {href:'kullanicilar.html', label:'Kullanıcılar', adminOnly:true},
+        {href:'loglar.html', label:'İşlem Geçmişi', adminOnly:true},
     ];
     const navBox = document.getElementById('navBox');
     if(navBox){

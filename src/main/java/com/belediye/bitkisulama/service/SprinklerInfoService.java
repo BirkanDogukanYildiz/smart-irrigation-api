@@ -22,6 +22,7 @@ public class SprinklerInfoService {
 
     private final SprinklerInfoRepository sprinklerInfoRepository;
     private final RegionService regionService;
+    private final AuditLogService auditLogService;
 
     // ---- YARDIMCI (private) METODLAR ----
 
@@ -111,22 +112,24 @@ public class SprinklerInfoService {
         return toDto(saved);
     }
 
-    // Bahçivanın/adminin kullandığı: durum + (arızalıysa) açıklama değiştirme
     @Transactional
     public SprinklerInfoResponseDto updateStatus(Long id, Status newStatus, String description) {
         SprinklerInfo device = sprinklerInfoRepository.findById(id)
                 .orElseThrow(() -> new DeviceNotFoundException(id));
-
         if (newStatus == Status.FAULTY && (description == null || description.isBlank())) {
             throw new IllegalArgumentException("Cihazı arızalı olarak işaretlerken açıklama girmek zorunludur!");
         }
-
         device.setStatus(newStatus);
         // Cihaz "çalışıyor" olarak işaretlenince eski arıza açıklaması temizlenir
         device.setDescription(newStatus == Status.FAULTY ? description : null);
-
         SprinklerInfo saved = sprinklerInfoRepository.save(device);
         log.info("Cihaz durumu güncellendi: id={}, newStatus={}", saved.getId(), newStatus);
+        // LOGLAMA
+        String islemDetayi = device.getDeviceNo() + " numaralı cihazın durumu " + newStatus.name() + " olarak değiştirildi.";
+        if (newStatus == Status.FAULTY) {
+            islemDetayi += " Sebep: " + description;
+        }
+        auditLogService.logAction("CİHAZ_DURUM_GÜNCELLEME", islemDetayi);
         return toDto(saved);
     }
 

@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole("ADMIN", "GARDENER")
+                        .requestMatchers("/api/logs/**").hasRole("ADMIN")
                         .requestMatchers("/", "/*.html", "/*.css", "/*.js", "/favicon.ico").permitAll()
 
                         // Kullanıcı yönetimi sadece ADMIN
