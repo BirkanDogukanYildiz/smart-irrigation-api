@@ -23,6 +23,23 @@
             margin-top: 6px;
         }
         .konum-bilgi b { color: var(--koyu, #0d233a); }
+        .konum-ust-satir {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .btn-konumum {
+            background: var(--ibb-blue-600, #1668a8);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .btn-konumum:disabled { opacity: 0.6; cursor: wait; }
     </style>
 </head>
 <body>
@@ -73,8 +90,11 @@
         </div>
 
         <div style="margin-top:18px;">
-            <label>Konum Seçiniz (opsiyonel)</label>
-            <p class="subtitle" style="margin:2px 0 0;">Cihazın harita üzerindeki konumunu belirlemek için haritaya tıklayın veya pini sürükleyin. Boş bırakırsanız konum daha sonra <b>Harita</b> sayfasından da ayarlanabilir.</p>
+            <div class="konum-ust-satir">
+                <label style="margin:0;">Konum Seçiniz (opsiyonel)</label>
+                <button type="button" class="btn-konumum" id="konumumBtn" onclick="konumumuKullan()">📍 Bulunduğum Konumu Kullan</button>
+            </div>
+            <p class="subtitle" style="margin:2px 0 0;">Cihazın harita üzerindeki konumunu belirlemek için haritaya tıklayın, pini sürükleyin ya da "Bulunduğum Konumu Kullan" butonuna basın. Boş bırakırsanız konum daha sonra <b>Harita</b> sayfasından da ayarlanabilir.</p>
             <div id="konumHaritasi"></div>
             <div class="konum-bilgi" id="konumBilgi">Konum seçilmedi.</div>
             <button type="button" class="btn-sil" id="konumTemizleBtn" style="margin-top:8px; display:none;" onclick="konumTemizle()">Konumu Temizle</button>
@@ -141,6 +161,70 @@
     // Sayfa gizli sekmede/görünmez halde açıldığında Leaflet boyutu yanlış hesaplayabilir,
     // sayfa tamamen render olduktan sonra boyutu tazele
     setTimeout(() => konumMap.invalidateSize(), 200);
+
+    // ---- Bulunduğum Konumu Kullan ----
+    window.konumumuKullan = function () {
+        const buton = document.getElementById('konumumBtn');
+
+        // 1) Tarayıcı desteği var mı?
+        if (!('geolocation' in navigator)) {
+            alert("Tarayıcınız konum servisini desteklemiyor. Konumu haritaya tıklayarak elle seçebilirsiniz.");
+            return;
+        }
+
+        // 2) EN SIK KARŞILAŞILAN HATA: Geolocation API sadece "güvenli bağlamda" (https:// veya localhost) çalışır.
+        // Siteye düz http:// ile ve localhost DIŞINDA bir adresten (ör. http://192.168.1.5:8080) giriliyorsa
+        // tarayıcı isteği baştan reddeder ve genelde "izin reddedildi" gibi görünen ama aslında
+        // bağlantı güvensiz olduğu için oluşan bir hata alınır.
+        if (!window.isSecureContext) {
+            alert(
+                "Konum bilgisi alınamadı: bu sayfaya güvenli olmayan bir bağlantı (http://) üzerinden erişiyorsunuz.\n\n" +
+                "Tarayıcılar konum bilgisini yalnızca https:// veya localhost üzerinden verir. " +
+                "Siteyi https:// ile açın ya da konumu haritaya tıklayarak elle seçin."
+            );
+            return;
+        }
+
+        buton.disabled = true;
+        const eskiMetin = buton.textContent;
+        buton.textContent = '📍 Konum alınıyor...';
+
+        navigator.geolocation.getCurrentPosition(
+            function (pozisyon) {
+                buton.disabled = false;
+                buton.textContent = eskiMetin;
+
+                const lat = pozisyon.coords.latitude;
+                const lng = pozisyon.coords.longitude;
+
+                konumSec({ lat, lng });
+                konumMap.flyTo([lat, lng], 17);
+            },
+            function (hata) {
+                buton.disabled = false;
+                buton.textContent = eskiMetin;
+
+                console.error('Geolocation hatası:', hata.code, hata.message);
+
+                let mesaj;
+                switch (hata.code) {
+                    case hata.PERMISSION_DENIED:
+                        mesaj = "Konum izni reddedildi. Tarayıcınızın adres çubuğundaki site ayarlarından bu sayfa için konum iznini açıp tekrar deneyin.";
+                        break;
+                    case hata.POSITION_UNAVAILABLE:
+                        mesaj = "Cihazınızın konumu şu anda belirlenemiyor (GPS/konum servisi kapalı olabilir). Lütfen konum servislerinin açık olduğundan emin olup tekrar deneyin.";
+                        break;
+                    case hata.TIMEOUT:
+                        mesaj = "Konum alma işlemi zaman aşımına uğradı. Lütfen tekrar deneyin.";
+                        break;
+                    default:
+                        mesaj = "Konumunuz alınamadı (" + (hata.message || 'bilinmeyen hata') + ").";
+                }
+                alert(mesaj + "\n\nDilerseniz haritaya tıklayarak konumu elle de seçebilirsiniz.");
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
 
     async function loadRegionsIntoSelectors(){
         const districtSelector = document.getElementById('districtSelect');

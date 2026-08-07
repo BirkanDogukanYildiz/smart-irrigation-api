@@ -64,6 +64,20 @@
         .harita-lejant span { display: flex; align-items: center; gap: 6px; }
         .harita-lejant .nokta { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
+        /* Küme (cluster) ikonları — içerdiği cihazların durumuna göre renklenir */
+        .marker-cluster { background-clip: padding-box; border-radius: 50%; }
+        .marker-cluster div {
+            width: 32px; height: 32px; margin-left: 4px; margin-top: 4px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; color: #fff; font-size: 12px;
+        }
+        .marker-cluster-calisir { background-color: rgba(31,138,85,0.4); }
+        .marker-cluster-calisir div { background-color: rgba(31,138,85,0.85); }
+        .marker-cluster-arizali { background-color: rgba(193,78,51,0.4); }
+        .marker-cluster-arizali div { background-color: rgba(193,78,51,0.85); }
+        .marker-cluster-karisik { background-color: rgba(217,119,6,0.4); }
+        .marker-cluster-karisik div { background-color: rgba(217,119,6,0.85); }
+
         /* Harita üzerinde durum bildirimi (yükleniyor / cihaz yok / hata) */
         .harita-durum-overlay {
             position: absolute;
@@ -103,7 +117,7 @@
 <main>
     <div class="bolum">
         <h3>İnteraktif Kontrol Haritası</h3>
-        <p class="subtitle" id="haritaBilgi">Cihaz konumunu değiştirmek için <b>pinleri sürükleyin.</b> Yeni cihaz eklemek için <b>haritada boş bir yere tıklayın.</b> Sağ üstten harita türünü değiştirebilirsiniz.</p>
+        <p class="subtitle" id="haritaBilgi">Cihaz konumunu değiştirmek için <b>pinleri sürükleyin</b> (bırakınca onay istenir). Yeni cihaz eklemek için <b>haritada boş bir yere tıklayın.</b> Sağ üstten harita türünü değiştirebilirsiniz.</p>
 
         <!-- SEÇENEK 2: Filtreleme Butonları -->
         <div class="filtre-paneli">
@@ -115,6 +129,7 @@
         <div class="harita-lejant">
             <span><span class="nokta" style="background:#1f8a55;"></span> Çalışıyor</span>
             <span><span class="nokta" style="background:#c14e33;"></span> Arızalı</span>
+            <span><span class="nokta" style="background:#d97706;"></span> Küme içinde karışık (en az 1 arızalı)</span>
             <span style="margin-left:auto; font-style:italic;">Yakınlaşınca kümeler otomatik dağılır (17. zoom seviyesinden itibaren).</span>
         </div>
 
@@ -164,7 +179,27 @@
     let markerKatmani = L.markerClusterGroup({
         disableClusteringAtZoom: 17, // 17 seviyesine kadar yaklaşınca kümeler dağılır
         spiderfyOnMaxZoom: true,
-        maxClusterRadius: 50 // Kümelerin etki alanı
+        maxClusterRadius: 50, // Kümelerin etki alanı
+
+        // Küme baloncuğunun rengini, içindeki cihazların durumuna göre belirle:
+        // hepsi çalışıyorsa yeşil, hepsi arızalıysa kırmızı, karışıksa turuncu.
+        // Böylece arızalı bir cihaz "hepsi yeşil" görünen bir kümenin içinde gizlenmez.
+        iconCreateFunction: function(cluster) {
+            const children = cluster.getAllChildMarkers();
+            const toplam = children.length;
+            const arizaliSayisi = children.filter(m => m.options.deviceStatus === 'FAULTY').length;
+
+            let renkSinifi;
+            if (arizaliSayisi === 0) renkSinifi = 'marker-cluster-calisir';
+            else if (arizaliSayisi === toplam) renkSinifi = 'marker-cluster-arizali';
+            else renkSinifi = 'marker-cluster-karisik';
+
+            return new L.DivIcon({
+                html: `<div><span>${toplam}</span></div>`,
+                className: 'marker-cluster ' + renkSinifi,
+                iconSize: L.point(40, 40)
+            });
+        }
     });
     map.addLayer(markerKatmani);
     // --------------------------------------------------------
@@ -181,12 +216,8 @@
         haritadaCihazlariCiz();
     };
 
-    // Yeni Cihaz Ekleme (Haritaya Tıklama)
-    map.on('click', function(e) {
-        if(!isAdmin) return;
-        const lat = e.latlng.lat;
-        const lng = e.latlng.lng;
-
+    // Bölge seçimi + cihaz no formunu belirtilen konumda açan yardımcı fonksiyon (harita tıklamasında kullanılır)
+    function cihazEklePopupuAc(lat, lng) {
         if(bolgeListesi.length === 0) {
             alert("Sistemde hiç bölge yok! Önce bölgeler sayfasından bölge ekleyin.");
             return;
@@ -204,7 +235,13 @@
                     <button onclick="yeniCihazKaydet(${lat}, ${lng})" class="btn-su" style="width:100%; margin-top:5px;">Konuma Cihaz Ekle</button>
                 </div>
             `;
-        L.popup().setLatLng(e.latlng).setContent(formHtml).openOn(map);
+        L.popup().setLatLng([lat, lng]).setContent(formHtml).openOn(map);
+    }
+
+    // Yeni Cihaz Ekleme (Haritaya Tıklama)
+    map.on('click', function(e) {
+        if(!isAdmin) return;
+        cihazEklePopupuAc(e.latlng.lat, e.latlng.lng);
     });
 
     // Popup içinden kaydetme
@@ -286,12 +323,28 @@
 
             const marker = L.marker([lat, lng], {
                 icon: isWorking ? greenIcon : redIcon,
-                draggable: isAdmin
+                draggable: isAdmin,
+                deviceStatus: c.status // küme renklendirmesinde kullanılıyor
             });
 
-            // Sürükle bırak konum güncellemesi
+            // Sürüklemeye başlarken o anki konumu sakla — kullanıcı onaylamazsa buraya geri döneceğiz
+            let eskiKonum = marker.getLatLng();
+            marker.on('dragstart', function(event) {
+                eskiKonum = event.target.getLatLng();
+            });
+
+            // Sürükle bırak konum güncellemesi — yanlışlıkla taşınmayı önlemek için önce onay isteniyor
             marker.on('dragend', async function(event) {
                 const newPos = event.target.getLatLng();
+
+                const onaylandiMi = confirm(
+                    `Cihaz #${c.deviceNo} konumunu değiştirmek üzeresiniz.\n\nYeni konumu kaydetmek istediğinize emin misiniz?`
+                );
+                if (!onaylandiMi) {
+                    event.target.setLatLng(eskiKonum); // Pini eski yerine geri koy
+                    return;
+                }
+
                 try {
                     await apiCall(`/api/devices/location/${c.id}`, {
                         method: 'PUT',
@@ -300,6 +353,7 @@
                     // Filtreleme yapıldığında cihazın eski yerine sıçramaması için lokal veriyi de güncelle
                     c.latitude = newPos.lat;
                     c.longitude = newPos.lng;
+                    eskiKonum = newPos;
                 } catch(e) {
                     alert('Konum kaydedilemedi, değişiklik geri alınıyor: ' + e.message);
                     haritadaCihazlariCiz();
