@@ -39,23 +39,19 @@ public class SprinklerInfoService {
     private SprinklerInfoResponseDto toDto(SprinklerInfo entity) {
         Region region = entity.getRegion();
         RegionResponseDto regionDto = new RegionResponseDto(
-                region.getId(),
-                region.getDistrictNo(),
-                region.getDistrictName(),
-                region.getRegionNo(),
-                region.getRegionName(),
-                region.getIrrigationAreaNo(),
-                region.getIrrigationAreaName(),
+                region.getId(), region.getDistrictNo(), region.getDistrictName(),
+                region.getRegionNo(), region.getRegionName(),
+                region.getIrrigationAreaNo(), region.getIrrigationAreaName(),
                 region.getDescription()
         );
 
-        return new SprinklerInfoResponseDto(
-                entity.getId(),
-                regionDto,
-                entity.getDeviceNo(),
-                entity.getStatus(),
-                entity.getDescription()
-        );
+        SprinklerInfoResponseDto dto = new SprinklerInfoResponseDto();
+        dto.setId(entity.getId());
+        dto.setRegion(regionDto);
+        dto.setDeviceNo(entity.getDeviceNo());
+        dto.setStatus(entity.getStatus());
+        dto.setDescription(entity.getDescription());
+        return dto;
     }
 
     // ---- ASIL METODLAR ----
@@ -138,4 +134,5 @@ public class SprinklerInfoService {
                 .orElseThrow(() -> new DeviceNotFoundException(id));
         return toDto(entity);
     }
+
 }

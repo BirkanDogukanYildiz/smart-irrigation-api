@@ -64,9 +64,11 @@ function setupNav(activePage){
 
     const userBox = document.getElementById('userBox');
     if(userBox){
+        const username = getUsername() || '';
+        const initial = username.charAt(0).toUpperCase() || '?';
         userBox.innerHTML = `
-      <span>${getUsername()}</span>
-      <span class="rozet ${getRole()}">${getRole() === 'ADMIN' ? 'Admin' : 'Bahçivan'}</span>
+      <span class="kullanici-adi"><span class="avatar">${initial}</span>${username}</span>
+      <span class="rozet ${getRole()}">${isAdmin ? 'Admin' : 'Bahçivan'}</span>
       <button class="btn-cikis" onclick="logout()">Çıkış Yap</button>
     `;
     }
