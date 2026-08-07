@@ -50,23 +50,23 @@ public class SecurityConfig {
                         // Herkese açık uç noktalar
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole("ADMIN", "GARDENER")
-                        .requestMatchers("/api/logs/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
+                        .requestMatchers("/api/logs/**").hasAnyRole("ADMIN", "HEADGARDENER")
                         .requestMatchers("/", "/*.html", "/*.css", "/*.js", "/favicon.ico").permitAll()
 
                         // Kullanıcı yönetimi sadece ADMIN
                         .requestMatchers("/api/user/**").hasRole("ADMIN")
 
                         // Bölge: okuma her iki role de açık, yazma sadece ADMIN
-                        .requestMatchers(HttpMethod.GET, "/api/region/**").hasAnyRole("ADMIN", "GARDENER")
-                        .requestMatchers("/api/region/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/region/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
+                        .requestMatchers("/api/region/**").hasAnyRole("ADMIN", "HEADGARDENER")
 
                         // Sulama cihazları: okuma her iki role açık
-                        .requestMatchers(HttpMethod.GET, "/api/devices/**").hasAnyRole("ADMIN", "GARDENER")
+                        .requestMatchers(HttpMethod.GET, "/api/devices/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
                         // Status güncelleme (arızalı/çalışıyor işaretleme): ADMIN + GARDENER
-                        .requestMatchers(HttpMethod.PUT, "/api/devices/status/**").hasAnyRole("ADMIN", "GARDENER")
+                        .requestMatchers(HttpMethod.PUT, "/api/devices/status/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
                         // Cihaz ekleme/silme/tam güncelleme: sadece ADMIN
-                        .requestMatchers("/api/devices/**").hasRole("ADMIN")
+                        .requestMatchers("/api/devices/**").hasAnyRole("ADMIN", "HEADGARDENER")
 
                         .anyRequest().authenticated()
                 )

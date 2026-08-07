@@ -23,6 +23,7 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         createIfNotExists("admin", "1234", Role.ADMIN);
+        createIfNotExists("bas_bahcivan", "1234", Role.HEADGARDENER);
         createIfNotExists("bahcivan", "1234", Role.GARDENER);
     }
 

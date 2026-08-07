@@ -18,6 +18,6 @@ public class UserRegisterRequestDto {
     @Size(min = 4, message = "Şifre en az 4 karakter olmalı!")
     private String password;
 
-    @NotNull(message = "Rol boş olamaz! (ADMIN veya GARDENER)")
+    @NotNull(message = "Rol boş olamaz! (ADMIN, GARDENER veya HEADGARDENER)")
     private Role role;
 }

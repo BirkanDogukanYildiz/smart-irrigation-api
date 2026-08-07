@@ -3,8 +3,12 @@ const API = '';
 function getToken(){ return localStorage.getItem('token'); }
 function getRole(){ return localStorage.getItem('role'); }
 function getUsername(){ return localStorage.getItem('username'); }
-
-// Her korumalı sayfanın en başında çağrılır: token yoksa login'e atar
+function requireManager(){
+    const role = getRole();
+    if(role !== 'ADMIN' && role !== 'HEADGARDENER'){
+        window.location.href = 'index.html';
+    }
+}
 function requireLogin(){
     if(!getToken()){
         window.location.href = 'login.html';
@@ -46,19 +50,24 @@ async function apiCall(path, options={}){
 
 // Her sayfanın <header> içindeki #navBox ve #userBox'unu doldurur
 function setupNav(activePage){
-    const isAdmin = getRole() === 'ADMIN';
+    const role = getRole();
+    const isAdmin = role === 'ADMIN';
+    const isHead = role === 'HEADGARDENER'; // Baş Bahçivanı değişkene atadık
+
+    // Sayfaların kimlere görüneceğini 'visible' özelliği ile kontrol ediyoruz
     const links = [
-        {href:'index.html', label:'Anasayfa', adminOnly:false},
-        {href:'bolgeler.html', label:'Bölgeler', adminOnly:true},
-        {href:'harita.html', label:'Harita Görünümü', adminOnly:false},
-        {href:'cihazlar.html', label:'Cihazlar', adminOnly:true},
-        {href:'kullanicilar.html', label:'Kullanıcılar', adminOnly:true},
-        {href:'loglar.html', label:'İşlem Geçmişi', adminOnly:true},
+        {href:'index.html', label:'Anasayfa', visible: true}, // Herkes
+        {href:'bolgeler.html', label:'Bölgeler', visible: isAdmin}, // Sadece Admin
+        {href:'harita.html', label:'Harita Görünümü', visible: true}, // Herkes
+        {href:'cihazlar.html', label:'Cihazlar', visible: isAdmin || isHead}, // Admin VE Baş Bahçivan
+        {href:'kullanicilar.html', label:'Kullanıcılar', visible: isAdmin}, // Sadece Admin
+        {href:'loglar.html', label:'İşlem Geçmişi', visible: isAdmin || isHead}, // Admin VE Baş Bahçivan
     ];
+
     const navBox = document.getElementById('navBox');
     if(navBox){
         navBox.innerHTML = links
-            .filter(l => !l.adminOnly || isAdmin)
+            .filter(l => l.visible) // Sadece visible özelliği "true" olanları ekrana bas
             .map(l => `<a href="${l.href}" class="${l.href === activePage ? 'aktif' : ''}">${l.label}</a>`)
             .join('');
     }
@@ -67,9 +76,19 @@ function setupNav(activePage){
     if(userBox){
         const username = getUsername() || '';
         const initial = username.charAt(0).toUpperCase() || '?';
+
+        let rolIsmi = '';
+        if (role === 'ADMIN') {
+            rolIsmi = 'Admin';
+        } else if (role === 'HEADGARDENER') {
+            rolIsmi = 'Baş Bahçivan';
+        } else {
+            rolIsmi = 'Bahçivan';
+        }
+
         userBox.innerHTML = `
       <span class="kullanici-adi"><span class="avatar">${initial}</span>${username}</span>
-      <span class="rozet ${getRole()}">${isAdmin ? 'Admin' : 'Bahçivan'}</span>
+      <span class="rozet ${role}">${rolIsmi}</span>
       <button class="btn-cikis" onclick="logout()">Çıkış Yap</button>
     `;
     }

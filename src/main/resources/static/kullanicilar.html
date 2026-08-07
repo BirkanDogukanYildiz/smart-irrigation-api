@@ -29,7 +29,7 @@
     <!-- Kullanıcı Ekle Bölümü -->
     <div class="bolum">
         <h3>Yeni Kullanıcı Ekle</h3>
-        <p class="subtitle">Sisteme yeni bir admin ya da bahçivan hesabı tanımla.</p>
+        <p class="subtitle">Sisteme yeni bir admin, baş bahçivan veya bahçivan hesabı tanımla.</p>
 
         <div id="ekleHata" class="hata-mesaji"></div>
         <div id="ekleBasari" class="basari-mesaji"></div>
@@ -48,6 +48,7 @@
                     <label>Rol</label>
                     <select id="regRole" required>
                         <option value="GARDENER">Bahçivan</option>
+                        <option value="HEADGARDENER">Baş Bahçivan</option>
                         <option value="ADMIN">Admin</option>
                     </select>
                 </div>
@@ -110,6 +111,7 @@
                             <td>#${u.id}</td>
                             <td><strong>${u.username}</strong></td>
                             <td><span class="rozet ${u.role}">${u.role === 'ADMIN' ? 'Admin' : 'Bahçivan'}</span></td>
+                            <td><span class="rozet ${u.role}">${u.role === 'ADMIN' ? 'Admin' : 'Baş Bahçivan'}</span></td>
                             <td>${islemHtml}</td>
                         </tr>
                     `;
