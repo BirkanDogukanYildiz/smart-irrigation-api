@@ -50,6 +50,7 @@ function setupNav(activePage){
     const links = [
         {href:'index.html', label:'Anasayfa', adminOnly:false},
         {href:'bolgeler.html', label:'Bölgeler', adminOnly:true},
+        {href:'harita.html', label:'Harita Görünümü', adminOnly:false},
         {href:'cihazlar.html', label:'Cihazlar', adminOnly:true},
         {href:'kullanicilar.html', label:'Kullanıcılar', adminOnly:true},
         {href:'loglar.html', label:'İşlem Geçmişi', adminOnly:true},

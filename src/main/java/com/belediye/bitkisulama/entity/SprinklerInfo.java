@@ -31,6 +31,13 @@ public class SprinklerInfo {
     @Column(nullable = false, length = 20)
     private Status status = Status.WORKING;
 
+    // Harita üzerindeki konumu
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
     // Sadece FAULTY durumundayken doldurulur, cihaz düzelince temizlenir
     @Column(length = 300)
     private String description;

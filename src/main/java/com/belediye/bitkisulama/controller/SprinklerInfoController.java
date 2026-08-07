@@ -49,4 +49,9 @@ public class SprinklerInfoController {
 
         return sprinklerInfoService.deviceInfo(id);
     }
+
+    @PutMapping("/location/{id}")
+    public SprinklerInfoResponseDto updateLocation(@PathVariable Long id, @RequestBody java.util.Map<String, Double> payload) {
+        return sprinklerInfoService.updateLocation(id, payload.get("latitude"), payload.get("longitude"));
+    }
 }

@@ -13,5 +13,7 @@ public class SprinklerInfoResponseDto {
     private RegionResponseDto region;
     private Integer deviceNo;
     private Status status;
+    private Double latitude;
+    private Double longitude;
     private String description;
 }

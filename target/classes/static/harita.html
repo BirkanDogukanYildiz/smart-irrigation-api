@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İnteraktif Harita - Bitki Sulama Yönetim Paneli</title>
+    <link rel="stylesheet" href="common.css">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        #haritaAlani {
+            height: 650px;
+            width: 100%;
+            border-radius: 12px;
+            border: 2px solid var(--kenar);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1;
+            cursor: crosshair; /* Tıklanabilir hissi vermek için */
+        }
+        .leaflet-popup-content h4 { margin: 0 0 8px 0; color: var(--koyu, #0d233a); border-bottom: 1px solid #eee; padding-bottom: 4px; }
+        .leaflet-popup-content p { margin: 4px 0; font-size: 13px; color: var(--metin-soluk); }
+        .popup-form input, .popup-form select { width: 100%; padding: 6px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="marka">
+        <div class="belediye-logo">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="var(--su)">
+                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+            </svg>
+        </div>
+        <div>
+            <h1>Bitki Sulama Yönetim Paneli</h1>
+            <div class="alt-baslik">Akıllı Park ve Bahçe Sistemleri</div>
+        </div>
+    </div>
+    <nav id="navBox"></nav>
+    <div id="userBox"></div>
+</header>
+
+<main>
+    <div class="bolum">
+        <h3>İnteraktif Bölge Haritası</h3>
+        <p class="subtitle" id="haritaBilgi">Cihazların konumunu değiştirmek için <b>pinleri sürükleyin.</b> Yeni cihaz eklemek için <b>haritada boş bir yere tıklayın.</b></p>
+
+        <div id="haritaAlani"></div>
+    </div>
+</main>
+
+<script src="common.js"></script>
+<script>
+    requireLogin();
+    setupNav('harita.html');
+
+    const isAdmin = getRole() === 'ADMIN';
+    let bolgeListesi = []; // Yeni cihaz eklerken dropdown için kullanılacak
+
+    // Sadece admin ise harita bilgi yazısını göster
+    if(!isAdmin) {
+        document.getElementById('haritaBilgi').innerText = "Cihazların anlık lokasyonlarını ve durumlarını inceleyebilirsiniz.";
+    }
+
+    const map = L.map('haritaAlani').setView([41.0136, 28.9550], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    const greenIcon = new L.Icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
+    const redIcon = new L.Icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
+
+    // Admin haritaya tıkladığında YENİ CİHAZ EKLEME menüsü açılır
+    map.on('click', function(e) {
+        if(!isAdmin) return;
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+
+        if(bolgeListesi.length === 0) {
+            alert("Sistemde hiç bölge yok! Önce bölgeler sayfasından bölge ekleyin.");
+            return;
+        }
+
+        const bolgeSecenekleri = bolgeListesi.map(b => `<option value="${b.id}">${b.regionName} (${b.districtName})</option>`).join('');
+
+        const formHtml = `
+                <div class="popup-form">
+                    <h4>📍 Yeni Cihaz Ekle</h4>
+                    <label>Bölge Seçin:</label>
+                    <select id="yeniBolgeId">${bolgeSecenekleri}</select>
+
+                    <label>Cihaz No:</label>
+                    <input type="number" id="yeniCihazNo" min="1" placeholder="Örn: 12" autocomplete="off">
+
+                    <button onclick="yeniCihazKaydet(${lat}, ${lng})" class="btn-su" style="width:100%; margin-top:5px;">Konuma Cihaz Ekle</button>
+                </div>
+            `;
+        L.popup().setLatLng(e.latlng).setContent(formHtml).openOn(map);
+    });
+
+    // Popup içindeki kaydet butonunun fonksiyonu
+    window.yeniCihazKaydet = async function(lat, lng) {
+        const regionId = document.getElementById('yeniBolgeId').value;
+        const deviceNoRaw = document.getElementById('yeniCihazNo').value.trim();
+        const deviceNo = Number(deviceNoRaw);
+
+        if(!deviceNoRaw || !Number.isInteger(deviceNo) || deviceNo <= 0) {
+            alert("Cihaz No boş olamaz ve pozitif bir tam sayı olmalı!");
+            return;
+        }
+
+        try {
+            await apiCall('/api/devices/save', {
+                method: 'POST',
+                body: JSON.stringify({
+                    regionId: parseInt(regionId),
+                    deviceNo: deviceNo,
+                    latitude: lat,
+                    longitude: lng
+                })
+            });
+            map.closePopup();
+            haritayiYenile(); // Yeni cihazı çizmesi için haritayı temizleyip tekrar yükle
+        } catch(e) {
+            alert("Cihaz eklenemedi: " + e.message);
+        }
+    };
+
+    // Popup içindeki SİL butonunun fonksiyonu
+    window.cihazSilHaritadan = async function(id, deviceNo) {
+        if(!confirm(`${deviceNo} numaralı cihazı haritadan ve sistemden tamamen SİLMEK istediğinize emin misiniz?`)) return;
+        try {
+            await apiCall('/api/devices/delete/' + id, { method: 'DELETE' });
+            map.closePopup();
+            haritayiYenile();
+        } catch(e) {
+            alert('Silme işlemi başarısız: ' + e.message);
+        }
+    };
+
+    let markerKatmani = L.layerGroup().addTo(map); // Eski pinleri kolay temizlemek için katman
+
+    async function haritayiYenile() {
+        try {
+            markerKatmani.clearLayers(); // Eski pinleri haritadan sil
+
+            // Bölgeleri çek (Yeni cihaz ekleme dropdown'ı için)
+            if(isAdmin) {
+                bolgeListesi = await apiCall('/api/region/list');
+            }
+
+            // Cihazları çek
+            const cihazlar = await apiCall('/api/devices/list');
+
+            cihazlar.forEach(c => {
+                // Konumu yoksa İstanbul içinde rastgele ata
+                const lat = c.latitude || (41.0000 + Math.random() * 0.0500);
+                const lng = c.longitude || (28.9000 + Math.random() * 0.1000);
+                const isWorking = c.status === 'WORKING';
+                const markerIcon = isWorking ? greenIcon : redIcon;
+
+                // İşaretçiyi (Pin) oluştur
+                const marker = L.marker([lat, lng], {
+                    icon: markerIcon,
+                    draggable: isAdmin // Adminse sürükle-bırak açık
+                });
+
+                // Sürükleme bitince konumu veritabanında güncelle
+                marker.on('dragend', async function(event) {
+                    const newPos = event.target.getLatLng();
+                    try {
+                        await apiCall(`/api/devices/location/${c.id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({ latitude: newPos.lat, longitude: newPos.lng })
+                        });
+                    } catch(e) {
+                        alert('Konum kaydedilemedi, değişiklik geri alınıyor: ' + e.message);
+                        haritayiYenile(); // Hata olursa pin eski yerine dönsün
+                    }
+                });
+
+                const durumMetni = isWorking
+                    ? `<strong style="color:var(--calisir);">Çalışıyor</strong>`
+                    : `<strong style="color:var(--arizali);">Arızalı</strong> <br> <em>Sebep: ${c.description}</em>`;
+
+                const silButonu = isAdmin
+                    ? `<button onclick="cihazSilHaritadan(${c.id}, '${c.deviceNo}')" class="btn-sil" style="width:100%; margin-top:8px;">Cihazı Kaldır</button>`
+                    : ``;
+
+                marker.bindPopup(`
+                        <h4>Cihaz #${c.deviceNo}</h4>
+                        <p><strong>Bölge:</strong> ${c.region.regionName} (${c.region.districtName})</p>
+                        <p><strong>Durum:</strong> ${durumMetni}</p>
+                        ${silButonu}
+                    `);
+
+                markerKatmani.addLayer(marker); // Pini katmana ekle
+            });
+        } catch(e) {
+            console.error('Veriler yüklenirken hata oluştu:', e);
+        }
+    }
+
+    // Sayfa ilk açıldığında haritayı doldur
+    haritayiYenile();
+</script>
+</body>
+</html>

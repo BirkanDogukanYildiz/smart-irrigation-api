@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cihazlar — Bitki Sulama Yönetim Paneli</title>
     <link rel="stylesheet" href="common.css">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #konumHaritasi {
+            height: 320px;
+            width: 100%;
+            border-radius: 12px;
+            border: 2px solid var(--kenar);
+            margin-top: 10px;
+            cursor: crosshair;
+        }
+        .konum-bilgi {
+            font-size: 12.5px;
+            color: var(--metin-soluk);
+            margin-top: 6px;
+        }
+        .konum-bilgi b { color: var(--koyu, #0d233a); }
+    </style>
 </head>
 <body>
 <header>
@@ -52,6 +71,15 @@
                 <input id="deviceNoInput" type="number" min="1">
             </div>
         </div>
+
+        <div style="margin-top:18px;">
+            <label>Konum Seçiniz (opsiyonel)</label>
+            <p class="subtitle" style="margin:2px 0 0;">Cihazın harita üzerindeki konumunu belirlemek için haritaya tıklayın veya pini sürükleyin. Boş bırakırsanız konum daha sonra <b>Harita</b> sayfasından da ayarlanabilir.</p>
+            <div id="konumHaritasi"></div>
+            <div class="konum-bilgi" id="konumBilgi">Konum seçilmedi.</div>
+            <button type="button" class="btn-sil" id="konumTemizleBtn" style="margin-top:8px; display:none;" onclick="konumTemizle()">Konumu Temizle</button>
+        </div>
+
         <button class="btn-ekle" onclick="addDevice()" style="margin-top: 16px;">Cihaz Ekle</button>
         <div class="basari-mesaji" id="deviceSuccess"></div>
     </div>
@@ -65,6 +93,54 @@
     loadRegionsIntoSelectors();
 
     let allRegions = []; // API'den gelen veriyi hafızada tutacağız
+
+    // ---- KONUM SEÇİM HARİTASI ----
+    let secilenKonum = null; // {lat, lng} ya da null (konum seçilmedi)
+    let konumPin = null;
+
+    const konumMap = L.map('konumHaritasi').setView([41.0136, 28.9550], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(konumMap);
+
+    function konumBilgisiGuncelle() {
+        const bilgiKutu = document.getElementById('konumBilgi');
+        const temizleBtn = document.getElementById('konumTemizleBtn');
+        if (secilenKonum) {
+            bilgiKutu.innerHTML = `<b>Seçilen konum:</b> ${secilenKonum.lat.toFixed(5)}, ${secilenKonum.lng.toFixed(5)}`;
+            temizleBtn.style.display = 'inline-block';
+        } else {
+            bilgiKutu.textContent = 'Konum seçilmedi.';
+            temizleBtn.style.display = 'none';
+        }
+    }
+
+    function konumSec(latlng) {
+        secilenKonum = { lat: latlng.lat, lng: latlng.lng };
+        if (konumPin) {
+            konumPin.setLatLng(latlng);
+        } else {
+            konumPin = L.marker(latlng, { draggable: true }).addTo(konumMap);
+            konumPin.on('dragend', () => konumSec(konumPin.getLatLng()));
+        }
+        konumBilgisiGuncelle();
+    }
+
+    window.konumTemizle = function () {
+        secilenKonum = null;
+        if (konumPin) {
+            konumMap.removeLayer(konumPin);
+            konumPin = null;
+        }
+        konumBilgisiGuncelle();
+    };
+
+    konumMap.on('click', (e) => konumSec(e.latlng));
+
+    // Sayfa gizli sekmede/görünmez halde açıldığında Leaflet boyutu yanlış hesaplayabilir,
+    // sayfa tamamen render olduktan sonra boyutu tazele
+    setTimeout(() => konumMap.invalidateSize(), 200);
 
     async function loadRegionsIntoSelectors(){
         const districtSelector = document.getElementById('districtSelect');
@@ -155,7 +231,9 @@
 
         const body = {
             regionId: Number(selectedAreaId),
-            deviceNo: Number(deviceNo)
+            deviceNo: Number(deviceNo),
+            latitude: secilenKonum ? secilenKonum.lat : null,
+            longitude: secilenKonum ? secilenKonum.lng : null
         };
 
         try{
@@ -167,6 +245,7 @@
             document.getElementById('deviceNoInput').value = '';
             document.getElementById('districtSelect').value = '';
             onDistrictChange(); // Alt kutuları tekrar sıfırlamak ve kilitlemek için tetikliyoruz
+            konumTemizle(); // Konum seçim haritasını da sıfırla
 
         } catch(e){
             alert('Cihaz eklenemedi: ' + e.message);

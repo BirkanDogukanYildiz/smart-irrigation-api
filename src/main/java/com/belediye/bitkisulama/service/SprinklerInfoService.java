@@ -33,6 +33,11 @@ public class SprinklerInfoService {
         entity.setRegion(region);
         entity.setDeviceNo(dto.getDeviceNo());
         entity.setStatus(Status.WORKING); // yeni cihaz her zaman "çalışıyor" olarak başlar
+
+        // ---- HARİTA İÇİN EKLENEN KOORDİNATLAR ----
+        entity.setLatitude(dto.getLatitude());
+        entity.setLongitude(dto.getLongitude());
+
         return entity;
     }
 
@@ -50,6 +55,8 @@ public class SprinklerInfoService {
         dto.setRegion(regionDto);
         dto.setDeviceNo(entity.getDeviceNo());
         dto.setStatus(entity.getStatus());
+        dto.setLatitude(entity.getLatitude());
+        dto.setLongitude(entity.getLongitude());
         dto.setDescription(entity.getDescription());
         return dto;
     }
@@ -116,10 +123,11 @@ public class SprinklerInfoService {
             throw new IllegalArgumentException("Cihazı arızalı olarak işaretlerken açıklama girmek zorunludur!");
         }
         device.setStatus(newStatus);
-        // Cihaz "çalışıyor" olarak işaretlenince eski arıza açıklaması temizlenir
+
         device.setDescription(newStatus == Status.FAULTY ? description : null);
         SprinklerInfo saved = sprinklerInfoRepository.save(device);
         log.info("Cihaz durumu güncellendi: id={}, newStatus={}", saved.getId(), newStatus);
+
         // LOGLAMA
         String islemDetayi = device.getDeviceNo() + " numaralı cihazın durumu " + newStatus.name() + " olarak değiştirildi.";
         if (newStatus == Status.FAULTY) {
@@ -135,4 +143,18 @@ public class SprinklerInfoService {
         return toDto(entity);
     }
 
+    @Transactional
+    public SprinklerInfoResponseDto updateLocation(Long id, Double latitude, Double longitude) {
+        SprinklerInfo device = sprinklerInfoRepository.findById(id)
+                .orElseThrow(() -> new DeviceNotFoundException(id));
+
+        device.setLatitude(latitude);
+        device.setLongitude(longitude);
+
+        SprinklerInfo saved = sprinklerInfoRepository.save(device);
+
+        auditLogService.logAction("KONUM_GÜNCELLEME", device.getDeviceNo() + " numaralı cihazın harita konumu değiştirildi.");
+
+        return toDto(saved);
+    }
 }
