@@ -52,7 +52,29 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
                         .requestMatchers("/api/logs/**").hasAnyRole("ADMIN", "HEADGARDENER")
-                        .requestMatchers("/", "/*.html", "/*.css", "/*.js", "/favicon.ico").permitAll()
+
+                        // --- React (Vite build) statik dosyaları ---
+                        // Not: Spring Boot'un PathRequest.toStaticResources() yardımcı sınıfı bu
+                        // projede (Spring Boot 4.1.0, modülerleşmiş autoconfigure yapısı) IDE
+                        // tarafından çözümlenemediği için (import hatası) kullanılmadı; bunun yerine
+                        // bilinen tüm statik dosya uzantılarını (ilk seferde eksik olan .png dahil)
+                        // açıkça listeliyoruz.
+                        .requestMatchers(
+                                "/", "/index.html", "/favicon.ico",
+                                "/assets/**",
+                                "/*.html", "/*.css", "/*.js",
+                                "/*.svg", "/*.png", "/*.ico", "/*.json"
+                        ).permitAll()
+
+                        // React Router (client-side routing) sayfaları: kullanıcı bu adreslere doğrudan
+                        // girdiğinde ya da sayfayı yenilediğinde tarayıcı gerçek bir GET isteği atar.
+                        // Bu istekler önce burada permitAll ile geçmeli, sonra SpaWebConfig onları
+                        // index.html'e yönlendirir (React Router devralır). Yetkilendirme zaten
+                        // React tarafında (rol bazlı menü/route koruması) ve gerçek API çağrılarında
+                        // (aşağıdaki /api/** kuralları) uygulanıyor; bu sayfa kabukları tek başına
+                        // hassas veri içermez.
+                        .requestMatchers("/giris", "/harita", "/cihazlar", "/bolgeler", "/kullanicilar", "/loglar")
+                        .permitAll()
 
                         // Kullanıcı yönetimi sadece ADMIN
                         .requestMatchers("/api/user/**").hasRole("ADMIN")

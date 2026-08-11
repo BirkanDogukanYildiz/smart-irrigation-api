@@ -40,7 +40,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7); // "Bearer " kısmını at, sadece token kalsın
-        String username = jwtService.extractUsername(token);
+
+        // Token bozuk, süresi dolmuş ya da imzası geçersizse jjwt burada unchecked
+        // bir exception fırlatır (ör. ExpiredJwtException, MalformedJwtException).
+        // Bunu yakalamazsak istek 401 yerine ham bir 500 ile patlar. Böyle bir
+        // durumda isteği "kimliksiz" (authentication set edilmeden) devam ettiriyoruz;
+        // ilgili endpoint zaten korumalıysa Spring Security normal 401/403 akışını işletir.
+        String username = null;
+        try {
+            username = jwtService.extractUsername(token);
+        } catch (RuntimeException ex) {
+            logger.debug("Geçersiz veya süresi dolmuş JWT token: " + ex.getMessage());
+        }
 
         // Kullanıcı adı bulunduysa ve henüz kimse "giriş yapmış" olarak işaretlenmediyse
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {

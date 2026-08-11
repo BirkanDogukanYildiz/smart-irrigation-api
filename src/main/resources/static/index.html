@@ -1,192 +1,21 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anasayfa - Bitki Sulama Yönetim Paneli</title>
-    <link rel="stylesheet" href="common.css">
-</head>
-<body>
-
-<header>
-    <div class="marka">
-        <!-- Kurumsal Belediye Logo / İkon Alanı -->
-        <div class="belediye-logo">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="var(--su)">
-                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
-            </svg>
-        </div>
-        <div>
-            <h1>Bitki Sulama Yönetim Paneli</h1>
-            <div class="alt-baslik">Akıllı Park ve Bahçe Sistemleri</div>
-        </div>
-    </div>
-    <nav id="navBox"></nav>
-    <div id="userBox"></div>
-</header>
-
-<main>
-    <!-- İstatistik Dashboard Bölümü -->
-    <div class="stat-grid" id="istatistikKutulari">
-        <div class="stat-card">
-            <span class="baslik">Toplam Cihaz</span>
-            <span class="deger" id="stat-totalDevices">-</span>
-        </div>
-        <div class="stat-card">
-            <span class="baslik">Çalışan Cihaz</span>
-            <span class="deger" id="stat-workingDevices" style="color: var(--calisir);">-</span>
-        </div>
-        <div class="stat-card arizali">
-            <span class="baslik">Arızalı Cihaz</span>
-            <span class="deger" id="stat-faultyDevices">-</span>
-        </div>
-        <div class="stat-card">
-            <span class="baslik">Toplam Bölge</span>
-            <span class="deger" id="stat-totalRegions">-</span>
-        </div>
-        <div class="stat-card">
-            <span class="baslik">Kayıtlı Kullanıcı</span>
-            <span class="deger" id="stat-totalUsers">-</span>
-        </div>
-    </div>
-
-    <div class="bolum">
-        <h3>Sulama Cihazları</h3>
-        <p class="subtitle">Bölgedeki tüm sulama cihazlarının anlık durumu. Arızalı bir cihaz gördüğünde işaretle.</p>
-
-        <div id="hataKutusu" class="hata-mesaji"></div>
-
-        <table>
-            <thead>
-            <tr>
-                <th>Bölge</th>
-                <th>İlçe</th>
-                <th>Cihaz No</th>
-                <th>Durum</th>
-                <th>Arıza Açıklaması</th>
-                <th>İşlemler</th>
-            </tr>
-            </thead>
-            <tbody id="cihazTablosu">
-            <tr><td colspan="6" class="bos-durum">Yükleniyor...</td></tr>
-            </tbody>
-        </table>
-    </div>
-</main>
-
-<script src="common.js"></script>
-<script>
-    requireLogin();
-    setupNav('index.html');
-
-    // ---- İSTATİSTİKLERİ YÜKLE ----
-    async function istatistikleriYukle() {
-        try {
-            const stats = await apiCall('/api/dashboard/summary');
-            document.getElementById('stat-totalDevices').textContent = stats.totalDevices;
-            document.getElementById('stat-workingDevices').textContent = stats.workingDevices;
-            document.getElementById('stat-faultyDevices').textContent = stats.faultyDevices;
-            document.getElementById('stat-totalRegions').textContent = stats.totalRegions;
-            document.getElementById('stat-totalUsers').textContent = stats.totalUsers;
-        } catch(e) {
-            console.error("İstatistikler yüklenemedi", e);
-        }
-    }
-
-    // ---- CİHAZLARI YÜKLE ----
-    async function cihazlariYukle(){
-        try{
-            const cihazlar = await apiCall('/api/devices/list');
-            const tbody = document.getElementById('cihazTablosu');
-
-            if(!cihazlar || cihazlar.length === 0){
-                tbody.innerHTML = `<tr><td colspan="6" class="bos-durum">Henüz kayıtlı cihaz yok.</td></tr>`;
-                return;
-            }
-
-            // Kullanıcının rolünü al
-            const isAdmin = getRole() === 'ADMIN';
-
-            tbody.innerHTML = cihazlar.map(c => {
-                const durumHtml = c.status === 'WORKING'
-                    ? `<span class="durum-rozet WORKING"><div class="nokta"></div>Çalışıyor</span>`
-                    : `<span class="durum-rozet FAULTY"><div class="nokta"></div>Arızalı</span>`;
-
-                const butonHtml = c.status === 'WORKING'
-                    ? `<button class="btn-toggle" onclick="arizaBildir(${c.id})">Arıza Bildir</button>`
-                    : `<button class="btn-toggle" onclick="calisiyorIsaretle(${c.id})">Çalışıyor İşaretle</button>`;
-
-                // Admin ise Çıkar butonu ekle, değilse boş bırak
-                const silButonuHtml = isAdmin
-                    ? `<button class="btn-sil" style="margin-left: 8px;" onclick="cihazSil(${c.id}, ${c.deviceNo})">Çıkar</button>`
-                    : '';
-
-                return `
-                        <tr>
-                            <td>${c.region.regionName}</td>
-                            <td>${c.region.districtName}</td>
-                            <td><strong>#${c.deviceNo}</strong></td>
-                            <td>${durumHtml}</td>
-                            <td style="color:var(--metin-soluk); font-size:12.5px;">${c.description || '—'}</td>
-                            <td>${butonHtml} ${silButonuHtml}</td>
-                        </tr>
-                    `;
-            }).join('');
-        } catch(e){
-            document.getElementById('hataKutusu').textContent = e.message;
-            document.getElementById('hataKutusu').style.display = 'block';
-        }
-    }
-
-    // ---- CİHAZ DURUM DEĞİŞTİRME ----
-    window.arizaBildir = async function(id){
-        const sebep = prompt("Arıza sebebini kısaca yazın (örn: Vana su sızdırıyor):");
-        if(!sebep) return;
-        if(sebep.trim() === ''){
-            alert('Arızalı olarak işaretlemek için açıklama girmeniz gerekiyor.');
-            return;
-        }
-        try{
-            await apiCall(`/api/devices/status/${id}`, {
-                method:'PUT',
-                body: JSON.stringify({ status: 'FAULTY', description: sebep })
-            });
-            cihazlariYukle();
-            istatistikleriYukle();
-        }catch(e){
-            alert('Durum güncellenemedi: ' + e.message);
-        }
-    }
-
-    window.calisiyorIsaretle = async function(id){
-        if(!confirm("Cihazın onarıldığını ve tekrar çalışır duruma geldiğini onaylıyor musun?")) return;
-        try{
-            await apiCall(`/api/devices/status/${id}`, {
-                method:'PUT',
-                body: JSON.stringify({ status: 'WORKING' })
-            });
-            cihazlariYukle();
-            istatistikleriYukle();
-        }catch(e){
-            alert('Durum güncellenemedi: ' + e.message);
-        }
-    }
-
-    // ---- CİHAZ SİLME (SADECE ADMİN) ----
-    window.cihazSil = async function(id, deviceNo){
-        if(!confirm(`#${deviceNo} numaralı sulama cihazını sistemden ÇIKARMAK istediğine emin misin?`)) return;
-        try{
-            await apiCall('/api/devices/delete/' + id, {method:'DELETE'});
-            cihazlariYukle();
-            istatistikleriYukle();
-        } catch(e){
-            alert('Cihaz çıkarılamadı: ' + e.message);
-        }
-    }
-
-    // Sayfa açıldığında her ikisini de çalıştır
-    istatistikleriYukle();
-    cihazlariYukle();
-</script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/ibb-logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0B5FA5" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Bitki Sulama Yönetim Paneli — İBB</title>
+    <script type="module" crossorigin src="/assets/index-D-o2X-KW.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CMrPwLRS.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>
