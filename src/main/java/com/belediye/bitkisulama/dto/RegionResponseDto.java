@@ -16,4 +16,8 @@ public class RegionResponseDto {
     private Integer irrigationAreaNo;
     private String irrigationAreaName;
     private String description;
+
+    // Bu bölgeden sorumlu baş bahçivan (admin tarafından atanır). Atanmamışsa ikisi de null gelir.
+    private Long headGardenerId;
+    private String headGardenerUsername;
 }

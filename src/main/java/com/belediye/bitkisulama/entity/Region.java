@@ -39,4 +39,10 @@ public class Region {
 
     @Column(length = 200)
     private String description;
+
+    // Bu bölgeden sorumlu baş bahçivan. Admin tarafından atanır (bkz. RegionService.assignHeadGardener).
+    // Gardener'lar hangi bölgeleri görebileceğini bu alan üzerinden (kendi headGardener'ları ile eşleştirerek) belirler.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "head_gardener_id")
+    private User headGardener;
 }

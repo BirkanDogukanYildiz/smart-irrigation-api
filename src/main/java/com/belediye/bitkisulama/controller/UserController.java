@@ -1,5 +1,6 @@
 package com.belediye.bitkisulama.controller;
 
+import com.belediye.bitkisulama.dto.AssignHeadGardenerRequestDto;
 import com.belediye.bitkisulama.dto.UserDeleteRequestDto;
 import com.belediye.bitkisulama.dto.UserDeleteResponseDto;
 import com.belediye.bitkisulama.dto.UserRegisterRequestDto;
@@ -33,6 +34,12 @@ public class UserController {
     @GetMapping("/list")
     public List<UserResponseDto> listUsers() {
         return userService.listUsers();
+    }
+
+    // Bir bahçivanı bir baş bahçivana bağlar (ya da headGardenerId=null göndererek atamayı kaldırır)
+    @PutMapping("/{id}/head-gardener")
+    public UserResponseDto assignHeadGardener(@PathVariable Long id, @RequestBody AssignHeadGardenerRequestDto dto) {
+        return userService.assignHeadGardener(id, dto.getHeadGardenerId());
     }
 }
 

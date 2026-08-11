@@ -14,4 +14,8 @@ public class UserResponseDto {
     private Long id;
     private String username;
     private Role role;
+
+    // Sadece GARDENER kullanıcılar için doludur: bağlı olduğu baş bahçivan (admin tarafından atanır)
+    private Long headGardenerId;
+    private String headGardenerUsername;
 }

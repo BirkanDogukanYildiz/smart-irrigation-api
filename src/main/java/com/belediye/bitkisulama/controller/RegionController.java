@@ -1,5 +1,6 @@
 package com.belediye.bitkisulama.controller;
 
+import com.belediye.bitkisulama.dto.AssignHeadGardenerRequestDto;
 import com.belediye.bitkisulama.dto.RegionRequestDto;
 import com.belediye.bitkisulama.dto.RegionResponseDto;
 import com.belediye.bitkisulama.service.RegionService;
@@ -36,6 +37,13 @@ public class RegionController {
     @PutMapping("/update/{id}")
     public RegionResponseDto updateRegion(@PathVariable Long id, @Valid @RequestBody RegionRequestDto dto) {
         return regionService.updateRegion(id, dto);
+    }
+
+    // Bölgeye tam formu tekrar doldurmadan hızlıca (ya da yeniden) baş bahçivan atamak için.
+    // Bu uç noktaya sadece ADMIN erişebilir (bkz. SecurityConfig: /api/region/** -> hasRole ADMIN, GET hariç).
+    @PutMapping("/{id}/head-gardener")
+    public RegionResponseDto assignHeadGardener(@PathVariable Long id, @RequestBody AssignHeadGardenerRequestDto dto) {
+        return regionService.assignHeadGardener(id, dto.getHeadGardenerId());
     }
 
     @DeleteMapping("/delete/{id}")

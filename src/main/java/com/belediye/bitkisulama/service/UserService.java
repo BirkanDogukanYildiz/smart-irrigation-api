@@ -5,14 +5,15 @@ import com.belediye.bitkisulama.dto.UserDeleteResponseDto;
 import com.belediye.bitkisulama.dto.UserRegisterRequestDto;
 import com.belediye.bitkisulama.dto.UserResponseDto;
 import com.belediye.bitkisulama.entity.User;
+import com.belediye.bitkisulama.entity.Region;
+import com.belediye.bitkisulama.enums.Role;
 import com.belediye.bitkisulama.exception.UsernameAlreadyExistsException;
+import com.belediye.bitkisulama.repository.RegionRepository;
 import com.belediye.bitkisulama.repository.UserRepository;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,10 +26,18 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final RegionRepository regionRepository;
     private final PasswordEncoder passwordEncoder;
 
     private UserResponseDto toDto(User entity) {
-        return new UserResponseDto(entity.getId(), entity.getUsername(), entity.getRole());
+        User headGardener = entity.getHeadGardener();
+        return new UserResponseDto(
+                entity.getId(),
+                entity.getUsername(),
+                entity.getRole(),
+                headGardener != null ? headGardener.getId() : null,
+                headGardener != null ? headGardener.getUsername() : null
+        );
     }
 
     @Transactional
@@ -54,6 +63,35 @@ public class UserService {
                 .toList();
     }
 
+    // Bir bahçivanı (GARDENER) bir baş bahçivana (HEADGARDENER) bağlar. Admin tarafından çağrılır.
+    // headGardenerId null gönderilirse bahçivan "sahipsiz" hale gelir (atama kaldırılır).
+    @Transactional
+    public UserResponseDto assignHeadGardener(Long gardenerId, Long headGardenerId) {
+        User gardener = userRepository.findById(gardenerId)
+                .orElseThrow(() -> new IllegalArgumentException("Kullanıcı bulunamadı: id=" + gardenerId));
+
+        if (gardener.getRole() != Role.GARDENER) {
+            throw new IllegalArgumentException(
+                    "'" + gardener.getUsername() + "' bir bahçivan değil (" + gardener.getRole() + "), baş bahçivan ataması sadece GARDENER rolündeki kullanıcılara yapılabilir!"
+            );
+        }
+
+        if (headGardenerId == null) {
+            gardener.setHeadGardener(null);
+        } else {
+            User headGardener = userRepository.findById(headGardenerId)
+                    .orElseThrow(() -> new IllegalArgumentException("Baş bahçivan bulunamadı: id=" + headGardenerId));
+            if (headGardener.getRole() != Role.HEADGARDENER) {
+                throw new IllegalArgumentException("'" + headGardener.getUsername() + "' bir baş bahçivan değil, bu ataması yapılamaz!");
+            }
+            gardener.setHeadGardener(headGardener);
+        }
+
+        User saved = userRepository.save(gardener);
+        log.info("Bahçivan-BaşBahçivan ataması güncellendi: gardener={}, headGardenerId={}", saved.getUsername(), headGardenerId);
+        return toDto(saved);
+    }
+
     private UserDeleteResponseDto toDeleteDto(User entity) {
         UserDeleteResponseDto dto = new UserDeleteResponseDto();
         dto.setId(entity.getId());
@@ -72,6 +110,24 @@ public class UserService {
         }
 
         UserDeleteResponseDto deletedUserDto = toDeleteDto(user);
+
+        // Silinen kullanıcı bir Baş Bahçivan ise, ona bağlı bahçivanların ve bölgelerin
+        // referansını önce temizlemek gerekiyor; yoksa veritabanı foreign key hatası verir.
+        if (user.getRole() == Role.HEADGARDENER) {
+            List<User> baglıGardenerlar = userRepository.findByHeadGardenerId(user.getId());
+            baglıGardenerlar.forEach(g -> g.setHeadGardener(null));
+            userRepository.saveAll(baglıGardenerlar);
+
+            List<Region> baglıBolgeler = regionRepository.findByHeadGardenerId(user.getId());
+            baglıBolgeler.forEach(r -> r.setHeadGardener(null));
+            regionRepository.saveAll(baglıBolgeler);
+
+            if (!baglıGardenerlar.isEmpty() || !baglıBolgeler.isEmpty()) {
+                log.info("'{}' silinmeden önce {} bahçivan ve {} bölgenin ataması kaldırıldı.",
+                        user.getUsername(), baglıGardenerlar.size(), baglıBolgeler.size());
+            }
+        }
+
         userRepository.delete(user);
         log.info("Kullanıcı silindi: id={}, username={}", user.getId(), user.getUsername());
 

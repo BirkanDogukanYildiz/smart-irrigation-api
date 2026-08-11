@@ -146,11 +146,15 @@
     setupNav('harita.html');
 
     const isAdmin = getRole() === 'ADMIN';
+    const isHeadGardener = getRole() === 'HEADGARDENER';
+    // Harita üzerinde cihaz ekleme/sürükleme/silme yetkisi: hem Admin hem Baş Bahçivan'a açık.
+    // (Backend zaten /api/devices/** ve GET /api/region/** için bu iki role de izin veriyor.)
+    const isManager = isAdmin || isHeadGardener;
     let bolgeListesi = [];
     let tumCihazlarListesi = []; // Filtreleme için veriyi önbellekte tutuyoruz
     let mevcutFiltre = 'HEPSI';
 
-    if(!isAdmin) {
+    if(!isManager) {
         document.getElementById('haritaBilgi').innerText = "Cihazların anlık lokasyonlarını ve durumlarını inceleyebilirsiniz. Sağ üstten görünümü değiştirebilirsiniz.";
     }
 
@@ -240,7 +244,7 @@
 
     // Yeni Cihaz Ekleme (Haritaya Tıklama)
     map.on('click', function(e) {
-        if(!isAdmin) return;
+        if(!isManager) return;
         cihazEklePopupuAc(e.latlng.lat, e.latlng.lng);
     });
 
@@ -284,7 +288,7 @@
     async function verileriCekVeHaritayiYenile() {
         overlayGoster('Yükleniyor...');
         try {
-            if(isAdmin) { bolgeListesi = await apiCall('/api/region/list'); }
+            if(isManager) { bolgeListesi = await apiCall('/api/region/list'); }
             tumCihazlarListesi = await apiCall('/api/devices/list');
             overlayGoster(null);
             haritadaCihazlariCiz(); // Çizim işlemini tetikle
@@ -299,7 +303,7 @@
         markerKatmani.clearLayers(); // Eski pinleri ve kümeleri temizle
 
         if (tumCihazlarListesi.length === 0) {
-            overlayGoster('Sistemde henüz kayıtlı cihaz yok.' + (isAdmin ? ' Eklemek için haritaya tıklayın.' : ''));
+            overlayGoster('Sistemde henüz kayıtlı cihaz yok.' + (isManager ? ' Eklemek için haritaya tıklayın.' : ''));
             return;
         }
         const filtreliSayisi = mevcutFiltre === 'HEPSI'
@@ -323,7 +327,7 @@
 
             const marker = L.marker([lat, lng], {
                 icon: isWorking ? greenIcon : redIcon,
-                draggable: isAdmin,
+                draggable: isManager,
                 deviceStatus: c.status // küme renklendirmesinde kullanılıyor
             });
 
@@ -363,7 +367,7 @@
             const durumMetni = isWorking
                 ? `<strong style="color:var(--calisir);">Çalışıyor</strong>`
                 : `<strong style="color:var(--arizali);">Arızalı</strong> <br> <em>Sebep: ${c.description}</em>`;
-            const silButonu = isAdmin ? `<button onclick="cihazSilHaritadan(${c.id}, '${c.deviceNo}')" class="btn-sil" style="width:100%; margin-top:8px;">Cihazı Kaldır</button>` : ``;
+            const silButonu = isManager ? `<button onclick="cihazSilHaritadan(${c.id}, '${c.deviceNo}')" class="btn-sil" style="width:100%; margin-top:8px;">Cihazı Kaldır</button>` : ``;
 
             marker.bindPopup(`
                     <h4>Cihaz #${c.deviceNo}</h4>

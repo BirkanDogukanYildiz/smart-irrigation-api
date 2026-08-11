@@ -43,11 +43,14 @@ public class SprinklerInfoService {
 
     private SprinklerInfoResponseDto toDto(SprinklerInfo entity) {
         Region region = entity.getRegion();
+        var headGardener = region.getHeadGardener();
         RegionResponseDto regionDto = new RegionResponseDto(
                 region.getId(), region.getDistrictNo(), region.getDistrictName(),
                 region.getRegionNo(), region.getRegionName(),
                 region.getIrrigationAreaNo(), region.getIrrigationAreaName(),
-                region.getDescription()
+                region.getDescription(),
+                headGardener != null ? headGardener.getId() : null,
+                headGardener != null ? headGardener.getUsername() : null
         );
 
         SprinklerInfoResponseDto dto = new SprinklerInfoResponseDto();
@@ -85,7 +88,15 @@ public class SprinklerInfoService {
 
     @Transactional(readOnly = true)
     public List<SprinklerInfoResponseDto> sprinklerDeviceGeneral() {
+        // Cihazlar da bağlı oldukları bölge üzerinden aynı görünürlük kuralına tabi:
+        // ADMIN hepsini görür, HEADGARDENER sadece kendi bölgelerindekileri,
+        // GARDENER ise bağlı olduğu baş bahçivanın bölgelerindekileri görür.
+        java.util.Set<Long> gorunurBolgeIdleri = regionService.getVisibleRegionEntities().stream()
+                .map(Region::getId)
+                .collect(java.util.stream.Collectors.toSet());
+
         return sprinklerInfoRepository.findAll().stream()
+                .filter(d -> gorunurBolgeIdleri.contains(d.getRegion().getId()))
                 .map(this::toDto)
                 .toList();
     }

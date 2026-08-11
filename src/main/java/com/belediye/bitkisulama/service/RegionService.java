@@ -3,12 +3,16 @@ package com.belediye.bitkisulama.service;
 import com.belediye.bitkisulama.dto.RegionRequestDto;
 import com.belediye.bitkisulama.dto.RegionResponseDto;
 import com.belediye.bitkisulama.entity.Region;
+import com.belediye.bitkisulama.entity.User;
+import com.belediye.bitkisulama.enums.Role;
 import com.belediye.bitkisulama.exception.RegionNotFoundException;
 import com.belediye.bitkisulama.exception.RegionCanNotDeleteException;
 import com.belediye.bitkisulama.repository.RegionRepository;
 import com.belediye.bitkisulama.repository.SprinklerInfoRepository;
+import com.belediye.bitkisulama.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,8 +25,10 @@ public class RegionService {
 
     private final RegionRepository regionRepository;
     private final SprinklerInfoRepository sprinklerInfoRepository;
+    private final UserRepository userRepository;
 
     private RegionResponseDto toDto(Region entity) {
+        User headGardener = entity.getHeadGardener();
         return new RegionResponseDto(
                 entity.getId(),
                 entity.getDistrictNo(),
@@ -31,7 +37,9 @@ public class RegionService {
                 entity.getRegionName(),
                 entity.getIrrigationAreaNo(),
                 entity.getIrrigationAreaName(),
-                entity.getDescription()
+                entity.getDescription(),
+                headGardener != null ? headGardener.getId() : null,
+                headGardener != null ? headGardener.getUsername() : null
         );
     }
 
@@ -39,6 +47,31 @@ public class RegionService {
     private Integer nextRegionNo() {
         Integer maxNo = regionRepository.findMaxRegionNo();
         return (maxNo == null ? 0 : maxNo) + 1;
+    }
+
+    // ---- GÖRÜNÜRLÜK (YETKİ) MANTIĞI ----
+    // Hangi kullanıcı hangi bölgeleri görebilir/kullanabilir:
+    //  - ADMIN: tüm bölgeler
+    //  - HEADGARDENER: sadece admin tarafından kendisine atanmış bölgeler
+    //  - GARDENER: bağlı olduğu baş bahçivana atanmış bölgeler (henüz bir baş bahçivana bağlanmadıysa hiçbiri)
+    private User getCurrentUser() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) return null;
+        return userRepository.findByUsername(authentication.getName()).orElse(null);
+    }
+
+    public List<Region> getVisibleRegionEntities() {
+        User current = getCurrentUser();
+        if (current == null || current.getRole() == null) return List.of();
+
+        return switch (current.getRole()) {
+            case ADMIN -> regionRepository.findAll();
+            case HEADGARDENER -> regionRepository.findByHeadGardenerId(current.getId());
+            case GARDENER -> {
+                if (current.getHeadGardener() == null) yield List.of();
+                yield regionRepository.findByHeadGardenerId(current.getHeadGardener().getId());
+            }
+        };
     }
 
     @Transactional
@@ -51,6 +84,7 @@ public class RegionService {
         entity.setIrrigationAreaNo(dto.getIrrigationAreaNo());
         entity.setIrrigationAreaName(dto.getIrrigationAreaName());
         entity.setDescription(dto.getDescription());
+        entity.setHeadGardener(resolveHeadGardener(dto.getHeadGardenerId()));
 
         Region saved = regionRepository.save(entity);
         log.info("Yeni bölge kaydedildi: id={}, regionNo={} (otomatik), regionName={}",
@@ -58,9 +92,10 @@ public class RegionService {
         return toDto(saved);
     }
 
+    // Bu SADECE ADMIN'e açık bir uç noktadan çağrılır, bu yüzden burada görünürlük filtresi UYGULANMAZ.
     @Transactional(readOnly = true)
     public List<RegionResponseDto> listRegions() {
-        return regionRepository.findAll().stream()
+        return getVisibleRegionEntities().stream()
                 .map(this::toDto)
                 .toList();
     }
@@ -83,10 +118,34 @@ public class RegionService {
         existingRegion.setIrrigationAreaNo(dto.getIrrigationAreaNo());
         existingRegion.setIrrigationAreaName(dto.getIrrigationAreaName());
         existingRegion.setDescription(dto.getDescription());
+        existingRegion.setHeadGardener(resolveHeadGardener(dto.getHeadGardenerId()));
 
         Region saved = regionRepository.save(existingRegion);
         log.info("Bölge güncellendi: id={}", saved.getId());
         return toDto(saved);
+    }
+
+    // Bölgeye ayrı bir uçtan (tam form doldurmadan) hızlıca baş bahçivan atamak için
+    @Transactional
+    public RegionResponseDto assignHeadGardener(Long regionId, Long headGardenerId) {
+        Region region = regionRepository.findById(regionId)
+                .orElseThrow(() -> new RegionNotFoundException(regionId));
+
+        region.setHeadGardener(resolveHeadGardener(headGardenerId));
+        Region saved = regionRepository.save(region);
+
+        log.info("Bölgeye baş bahçivan atandı: regionId={}, headGardenerId={}", regionId, headGardenerId);
+        return toDto(saved);
+    }
+
+    private User resolveHeadGardener(Long headGardenerId) {
+        if (headGardenerId == null) return null;
+        User headGardener = userRepository.findById(headGardenerId)
+                .orElseThrow(() -> new IllegalArgumentException("Baş bahçivan bulunamadı: id=" + headGardenerId));
+        if (headGardener.getRole() != Role.HEADGARDENER) {
+            throw new IllegalArgumentException("'" + headGardener.getUsername() + "' bir baş bahçivan değil, bölgeye atanamaz!");
+        }
+        return headGardener;
     }
 
     @Transactional

@@ -27,7 +27,7 @@
 <main>
     <div class="bolum">
         <h3>Sistem İşlem Geçmişi (Audit Logs)</h3>
-        <p class="subtitle">Sistemdeki cihaz arıza ve onarım kayıtlarını zaman damgasıyla inceleyin.</p>
+        <p class="subtitle" id="logBilgi">Sistemdeki cihaz arıza ve onarım kayıtlarını zaman damgasıyla inceleyin.</p>
 
         <table>
             <thead>
@@ -50,6 +50,10 @@
     requireLogin();
     requireManager(); 
     setupNav('loglar.html');
+
+    if (getRole() === 'HEADGARDENER') {
+        document.getElementById('logBilgi').textContent = "Burada sadece size bağlı bahçivanların işlem kayıtlarını görebilirsiniz.";
+    }
 
     async function loglariYukle() {
         try {

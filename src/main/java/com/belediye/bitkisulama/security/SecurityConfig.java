@@ -57,9 +57,10 @@ public class SecurityConfig {
                         // Kullanıcı yönetimi sadece ADMIN
                         .requestMatchers("/api/user/**").hasRole("ADMIN")
 
-                        // Bölge: okuma her iki role de açık, yazma sadece ADMIN
+                        // Bölge: okuma her role açık (görünürlük servis katmanında filtrelenir),
+                        // yazma (oluşturma/güncelleme/silme/baş bahçivan atama) SADECE ADMIN.
                         .requestMatchers(HttpMethod.GET, "/api/region/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
-                        .requestMatchers("/api/region/**").hasAnyRole("ADMIN", "HEADGARDENER")
+                        .requestMatchers("/api/region/**").hasRole("ADMIN")
 
                         // Sulama cihazları: okuma her iki role açık
                         .requestMatchers(HttpMethod.GET, "/api/devices/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")

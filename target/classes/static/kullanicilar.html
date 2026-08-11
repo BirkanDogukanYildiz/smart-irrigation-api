@@ -71,11 +71,12 @@
                 <th>ID</th>
                 <th>Kullanıcı Adı</th>
                 <th>Rol</th>
+                <th>Bağlı Olduğu Baş Bahçivan</th>
                 <th>İşlemler</th>
             </tr>
             </thead>
             <tbody id="kullaniciTablosu">
-            <tr><td colspan="4" class="bos-durum">Kullanıcılar yükleniyor...</td></tr>
+            <tr><td colspan="5" class="bos-durum">Kullanıcılar yükleniyor...</td></tr>
             </tbody>
         </table>
     </div>
@@ -89,15 +90,24 @@
     setupNav('kullanicilar.html');
 
     // ---- KULLANICILARI TABLOYA ÇEKME ----
+    function rolAdi(role) {
+        if (role === 'ADMIN') return 'Admin';
+        if (role === 'HEADGARDENER') return 'Baş Bahçivan';
+        return 'Bahçivan';
+    }
+
     async function kullanicilariYukle() {
         try {
             const users = await apiCall('/api/user/list');
             const tbody = document.getElementById('kullaniciTablosu');
 
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="bos-durum">Kayıtlı kullanıcı bulunamadı.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="bos-durum">Kayıtlı kullanıcı bulunamadı.</td></tr>';
                 return;
             }
+
+            // Baş bahçivan atama dropdown'ını doldurmak için sistemdeki tüm HEADGARDENER'ları ayıkla
+            const basBahcivanlar = users.filter(u => u.role === 'HEADGARDENER');
 
             tbody.innerHTML = users.map(u => {
                 // Kullanıcı giriş yapan kişiyle aynıysa silme butonunu gösterme
@@ -106,20 +116,56 @@
                     ? `<span style="font-size: 11px; color: var(--metin-soluk); font-weight: 600;">SENİN HESABIN</span>`
                     : `<button class="btn-sil" onclick="kullaniciSil('${u.username}')">Sil</button>`;
 
+                // "Bağlı Olduğu Baş Bahçivan" kolonu sadece GARDENER satırlarında düzenlenebilir bir seçim kutusu olarak gösterilir
+                let basBahcivanHtml = '<span style="color: var(--metin-soluk);">—</span>';
+                if (u.role === 'GARDENER') {
+                    if (basBahcivanlar.length === 0) {
+                        basBahcivanHtml = `<span style="font-size: 11.5px; color: var(--metin-soluk);">Sistemde henüz Baş Bahçivan yok</span>`;
+                    } else {
+                        const secenekler = basBahcivanlar.map(hg =>
+                            `<option value="${hg.id}" ${hg.id === u.headGardenerId ? 'selected' : ''}>${hg.username}</option>`
+                        ).join('');
+                        basBahcivanHtml = `
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <select id="hg-select-${u.id}" style="padding:4px 6px; font-size:12.5px;">
+                                    <option value="">— Atanmadı —</option>
+                                    ${secenekler}
+                                </select>
+                                <button class="btn-ekle" style="padding:5px 10px; font-size:11.5px;" onclick="basBahcivanAta(${u.id})">Kaydet</button>
+                            </div>`;
+                    }
+                }
+
                 return `
                         <tr>
                             <td>#${u.id}</td>
                             <td><strong>${u.username}</strong></td>
-                            <td><span class="rozet ${u.role}">${u.role === 'ADMIN' ? 'Admin' : 'Bahçivan'}</span></td>
-                            <td><span class="rozet ${u.role}">${u.role === 'ADMIN' ? 'Admin' : 'Baş Bahçivan'}</span></td>
+                            <td><span class="rozet ${u.role}">${rolAdi(u.role)}</span></td>
+                            <td>${basBahcivanHtml}</td>
                             <td>${islemHtml}</td>
                         </tr>
                     `;
             }).join('');
         } catch (err) {
-            document.getElementById('kullaniciTablosu').innerHTML = `<tr><td colspan="4" class="hata-mesaji">${err.message}</td></tr>`;
+            document.getElementById('kullaniciTablosu').innerHTML = `<tr><td colspan="5" class="hata-mesaji">${err.message}</td></tr>`;
         }
     }
+
+    // ---- BAHÇİVANI BİR BAŞ BAHÇİVANA BAĞLAMA ----
+    window.basBahcivanAta = async function(gardenerId) {
+        const select = document.getElementById('hg-select-' + gardenerId);
+        const headGardenerId = select.value ? Number(select.value) : null;
+
+        try {
+            await apiCall(`/api/user/${gardenerId}/head-gardener`, {
+                method: 'PUT',
+                body: JSON.stringify({ headGardenerId })
+            });
+            kullanicilariYukle();
+        } catch (err) {
+            alert('Baş bahçivan ataması yapılamadı: ' + err.message);
+        }
+    };
 
     // Sayfa açıldığında kullanıcıları yükle
     kullanicilariYukle();

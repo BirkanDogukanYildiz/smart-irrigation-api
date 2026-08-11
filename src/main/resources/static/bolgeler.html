@@ -30,7 +30,7 @@
         <p class="subtitle">Kayıtlı tüm bölgeler. Bölge numarası sistem tarafından otomatik atanır.</p>
         <table>
             <thead>
-            <tr><th>Bölge No</th><th>Bölge Adı</th><th>İlçe</th><th>Sulama Alanı</th><th></th></tr>
+            <tr><th>Bölge No</th><th>Bölge Adı</th><th>İlçe</th><th>Sulama Alanı</th><th>Baş Bahçivan</th><th></th></tr>
             </thead>
             <tbody id="regionTable"></tbody>
         </table>
@@ -47,6 +47,9 @@
             <div><label>Sulama Alanı No</label><input id="rIrrigationAreaNo" type="number"></div>
             <div><label>Sulama Alanı Adı</label><input id="rIrrigationAreaName" type="text"></div>
             <div class="satir-sonu"><label>Açıklama (opsiyonel)</label><input id="rDescription" type="text"></div>
+            <div><label>Baş Bahçivan (opsiyonel)</label>
+                <select id="rHeadGardener"><option value="">— Atanmadı —</option></select>
+            </div>
         </div>
         <button class="btn-ekle" onclick="addRegion()">Bölge Ekle</button>
         <div class="basari-mesaji" id="regionSuccess"></div>
@@ -58,7 +61,23 @@
     requireLogin();
     requireAdmin();
     setupNav('bolgeler.html');
-    loadRegions();
+
+    let basBahcivanlar = []; // Dropdown ve tablo için hafızada tutulur
+
+    async function basBahcivanlariYukle() {
+        try {
+            const users = await apiCall('/api/user/list');
+            basBahcivanlar = users.filter(u => u.role === 'HEADGARDENER');
+
+            const select = document.getElementById('rHeadGardener');
+            select.innerHTML = '<option value="">— Atanmadı —</option>' +
+                basBahcivanlar.map(hg => `<option value="${hg.id}">${hg.username}</option>`).join('');
+        } catch(e) {
+            console.error('Baş bahçivan listesi yüklenemedi:', e);
+        }
+    }
+
+    basBahcivanlariYukle().then(loadRegions);
 
     async function loadRegions(){
         const tableBody = document.getElementById('regionTable');
@@ -73,11 +92,26 @@
             emptyNotice.style.display = 'none';
             list.forEach(region => {
                 const tr = document.createElement('tr');
+
+                const hgSecenekleri = basBahcivanlar.map(hg =>
+                    `<option value="${hg.id}" ${hg.id === region.headGardenerId ? 'selected' : ''}>${hg.username}</option>`
+                ).join('');
+                const hgHtml = basBahcivanlar.length === 0
+                    ? `<span style="font-size:11.5px; color: var(--metin-soluk);">Sistemde Baş Bahçivan yok</span>`
+                    : `<div style="display:flex; gap:6px; align-items:center;">
+                            <select id="hg-region-${region.id}" style="padding:4px 6px; font-size:12.5px;">
+                                <option value="">— Atanmadı —</option>
+                                ${hgSecenekleri}
+                            </select>
+                            <button class="btn-ekle" style="padding:5px 10px; font-size:11.5px;" onclick="bolgeyeBasBahcivanAta(${region.id})">Kaydet</button>
+                        </div>`;
+
                 tr.innerHTML = `
         <td><strong>#${region.regionNo}</strong></td>
         <td>${region.regionName}</td>
         <td>${region.districtName} (${region.districtNo})</td>
         <td>${region.irrigationAreaName} (${region.irrigationAreaNo})</td>
+        <td>${hgHtml}</td>
         <td><button class="btn-sil" data-id="${region.id}" data-ad="${region.regionName}">Sil</button></td>
       `;
                 tableBody.appendChild(tr);
@@ -90,6 +124,22 @@
             emptyNotice.style.display = 'block';
         }
     }
+
+    // ---- BÖLGEYE BAŞ BAHÇİVAN ATAMA ----
+    window.bolgeyeBasBahcivanAta = async function(regionId) {
+        const select = document.getElementById('hg-region-' + regionId);
+        const headGardenerId = select.value ? Number(select.value) : null;
+
+        try {
+            await apiCall(`/api/region/${regionId}/head-gardener`, {
+                method: 'PUT',
+                body: JSON.stringify({ headGardenerId })
+            });
+            loadRegions();
+        } catch(e) {
+            alert('Baş bahçivan ataması yapılamadı: ' + e.message);
+        }
+    };
 
     async function deleteRegion(id, name){
         if(!confirm(`"${name}" bölgesini silmek istediğine emin misin?`)) return;
@@ -110,13 +160,15 @@
             regionName: document.getElementById('rRegionName').value.trim(),
             irrigationAreaNo: Number(document.getElementById('rIrrigationAreaNo').value),
             irrigationAreaName: document.getElementById('rIrrigationAreaName').value.trim(),
-            description: document.getElementById('rDescription').value.trim()
+            description: document.getElementById('rDescription').value.trim(),
+            headGardenerId: document.getElementById('rHeadGardener').value ? Number(document.getElementById('rHeadGardener').value) : null
         };
         try{
             await apiCall('/api/region/save', {method:'POST', body: JSON.stringify(body)});
             successBox.textContent = 'Bölge başarıyla eklendi.';
             successBox.style.display = 'block';
             ['rDistrictNo','rDistrictName','rRegionName','rIrrigationAreaNo','rIrrigationAreaName','rDescription'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('rHeadGardener').value = '';
             loadRegions();
         } catch(e){
             alert('Bölge eklenemedi: ' + e.message);

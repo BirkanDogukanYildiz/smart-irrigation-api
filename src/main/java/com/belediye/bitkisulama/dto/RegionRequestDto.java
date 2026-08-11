@@ -31,4 +31,8 @@ public class RegionRequestDto {
     private String irrigationAreaName;
 
     private String description;
+
+    // Opsiyonel: bölge oluşturulurken/güncellenirken doğrudan bir baş bahçivan atanabilir.
+    // Boş bırakılırsa bölge "sahipsiz" kalır, daha sonra ayrı bir uçtan (assign-headgardener) atanabilir.
+    private Long headGardenerId;
 }

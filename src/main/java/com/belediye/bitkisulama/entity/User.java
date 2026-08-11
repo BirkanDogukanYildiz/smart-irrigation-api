@@ -27,4 +27,11 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role;
+
+    // Sadece role=GARDENER için anlamlıdır: bu bahçivanın bağlı olduğu baş bahçivan.
+    // Admin tarafından atanır (bkz. UserService.assignHeadGardener). Bahçivanın hangi
+    // bölgeleri görebileceği bu alana göre belirlenir (RegionService.getVisibleRegionEntities).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "head_gardener_id")
+    private User headGardener;
 }
