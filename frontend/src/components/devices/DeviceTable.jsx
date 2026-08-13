@@ -1,4 +1,5 @@
 import StatusBadge from "../common/StatusBadge";
+import AssetTypeBadge from "../common/AssetTypeBadge";
 import Button from "../common/Button";
 import EmptyState from "../common/EmptyState";
 import Loading from "../common/Loading";
@@ -6,7 +7,7 @@ import "../../styles/table.css";
 
 export default function DeviceTable({ devices, onToggleStatus, onDelete, canDelete }) {
   if (devices === null) return <Loading />;
-  if (devices.length === 0) return <EmptyState>Henüz kayıtlı cihaz yok.</EmptyState>;
+  if (devices.length === 0) return <EmptyState>Henüz kayıtlı ekipman yok.</EmptyState>;
 
   return (
     <div className="data-table-wrap">
@@ -15,7 +16,8 @@ export default function DeviceTable({ devices, onToggleStatus, onDelete, canDele
           <tr>
             <th>Bölge</th>
             <th>İlçe</th>
-            <th>Cihaz No</th>
+            <th>No</th>
+            <th>Tür</th>
             <th>Durum</th>
             <th>Arıza Açıklaması</th>
             <th>İşlemler</th>
@@ -27,6 +29,9 @@ export default function DeviceTable({ devices, onToggleStatus, onDelete, canDele
               <td>{d.region?.regionName}</td>
               <td className="cell-muted">{d.region?.districtName}</td>
               <td>#{d.deviceNo}</td>
+              <td>
+                <AssetTypeBadge type={d.assetType} />
+              </td>
               <td>
                 <StatusBadge status={d.status} />
               </td>

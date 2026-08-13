@@ -5,7 +5,7 @@ export function listDevices() {
   return apiCall("/api/devices/list");
 }
 
-// POST /api/devices/save { regionId, deviceNo, latitude?, longitude? }
+// POST /api/devices/save { regionId, deviceNo, assetType?, latitude?, longitude? }
 export function createDevice(payload) {
   return apiCall("/api/devices/save", {
     method: "POST",
@@ -13,11 +13,11 @@ export function createDevice(payload) {
   });
 }
 
-// PUT /api/devices/status/{id} { status, description? }
-export function updateDeviceStatus(id, status, description) {
+// PUT /api/devices/status/{id} { status, description?, faultType? }
+export function updateDeviceStatus(id, status, description, faultType) {
   return apiCall(`/api/devices/status/${id}`, {
     method: "PUT",
-    body: JSON.stringify({ status, description }),
+    body: JSON.stringify({ status, description, faultType }),
   });
 }
 

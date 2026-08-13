@@ -5,6 +5,15 @@
   justify-content: center;
   background: var(--color-bg);
   padding: var(--space-5);
+  position: relative;
+}
+.login-theme-toggle {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-5);
+}
+@media (max-width: 480px) {
+  .login-theme-toggle { top: var(--space-3); right: var(--space-3); }
 }
 .login-card {
   width: 100%;

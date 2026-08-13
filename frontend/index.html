@@ -5,13 +5,37 @@
     <link rel="icon" type="image/png" href="/ibb-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0B5FA5" />
+
+    <!--
+      Tema tercihini React yüklenmeden ÖNCE, mümkün olan en erken anda uygular.
+      Amaç: sayfa açılırken önce açık temanın görünüp bir anlığına koyu temaya
+      "flaşlaması" (FOUC) olmasın. ThemeContext.jsx mount olduğunda burada set
+      edilen data-theme değerini zaten okuyup state'e senkronize ediyor.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var theme =
+            stored === "light" || stored === "dark"
+              ? stored
+              : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          // localStorage erişilemezse sessizce açık temada kal.
+        }
+      })();
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <title>Bitki Sulama Yönetim Paneli — İBB</title>
+    <title>Park Takip Sistemi — İBB</title>
   </head>
   <body>
     <div id="root"></div>

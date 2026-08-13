@@ -28,6 +28,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final RegionRepository regionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
 
     private UserResponseDto toDto(User entity) {
         User headGardener = entity.getHeadGardener();
@@ -53,6 +54,16 @@ public class UserService {
 
         User saved = userRepository.save(user);
         log.info("Yeni kullanıcı oluşturuldu: username={}, role={}", saved.getUsername(), saved.getRole());
+
+        // DİKKAT: parola hiçbir zaman log'a yazılmaz, sadece kullanıcı adı + rol.
+        auditLogService.logAction(
+                AuditActions.KULLANICI_OLUSTURULDU,
+                AuditActions.KAYNAK_KULLANICI,
+                saved.getId(),
+                "'" + saved.getUsername() + "' kullanıcısı (" + saved.getRole() + ") oluşturuldu.",
+                null,
+                saved.getUsername() + " - " + saved.getRole()
+        );
         return toDto(saved);
     }
 
@@ -76,6 +87,8 @@ public class UserService {
             );
         }
 
+        String oldHeadGardener = gardener.getHeadGardener() != null ? gardener.getHeadGardener().getUsername() : "Atanmadı";
+
         if (headGardenerId == null) {
             gardener.setHeadGardener(null);
         } else {
@@ -88,7 +101,17 @@ public class UserService {
         }
 
         User saved = userRepository.save(gardener);
+        String newHeadGardener = saved.getHeadGardener() != null ? saved.getHeadGardener().getUsername() : "Atanmadı";
         log.info("Bahçivan-BaşBahçivan ataması güncellendi: gardener={}, headGardenerId={}", saved.getUsername(), headGardenerId);
+
+        auditLogService.logAction(
+                AuditActions.KULLANICI_GUNCELLENDI,
+                AuditActions.KAYNAK_KULLANICI,
+                saved.getId(),
+                "'" + saved.getUsername() + "' kullanıcısının baş bahçivan ataması değiştirildi.",
+                "Baş Bahçivan: " + oldHeadGardener,
+                "Baş Bahçivan: " + newHeadGardener
+        );
         return toDto(saved);
     }
 
@@ -99,6 +122,7 @@ public class UserService {
         dto.setRole(entity.getRole());
         return dto;
     }
+
     @Transactional
     public UserDeleteResponseDto deleteUser(UserDeleteRequestDto dto) {
         User user = userRepository.findByUsername(dto.getUsername())
@@ -110,6 +134,7 @@ public class UserService {
         }
 
         UserDeleteResponseDto deletedUserDto = toDeleteDto(user);
+        String label = user.getUsername() + " - " + user.getRole();
 
         // Silinen kullanıcı bir Baş Bahçivan ise, ona bağlı bahçivanların ve bölgelerin
         // referansını önce temizlemek gerekiyor; yoksa veritabanı foreign key hatası verir.
@@ -128,8 +153,18 @@ public class UserService {
             }
         }
 
+        Long deletedId = user.getId();
         userRepository.delete(user);
-        log.info("Kullanıcı silindi: id={}, username={}", user.getId(), user.getUsername());
+        log.info("Kullanıcı silindi: id={}, username={}", deletedId, user.getUsername());
+
+        auditLogService.logAction(
+                AuditActions.KULLANICI_SILINDI,
+                AuditActions.KAYNAK_KULLANICI,
+                deletedId,
+                "'" + deletedUserDto.getUsername() + "' kullanıcısı silindi.",
+                label,
+                null
+        );
 
         return deletedUserDto;
     }

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import IBBLogo from "../components/common/IBBLogo";
 import Alert from "../components/common/Alert";
 import Button from "../components/common/Button";
+import ThemeToggle from "../components/common/ThemeToggle";
 import { useAuth } from "../context/AuthContext";
 import "../styles/form.css";
 import "../styles/login.css";
@@ -31,10 +32,14 @@ export default function LoginPage() {
 
   return (
     <main className="login-page">
+      <div className="login-theme-toggle">
+        <ThemeToggle />
+      </div>
+
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="login-brand">
           <IBBLogo size={40} />
-          <h1>Bitki Sulama Yönetim Paneli</h1>
+          <h1>Park Takip Sistemi</h1>
           <div className="login-sub">İstanbul Büyükşehir Belediyesi · Akıllı Park ve Bahçe Sistemleri</div>
         </div>
 
@@ -73,6 +78,10 @@ export default function LoginPage() {
           <div className="login-help">
             Test hesapları — <code>admin / 1234</code> · <code>bahcivan / 1234</code> ·{" "}
             <code>bas_bahcivan / 1234</code>
+          </div>
+
+          <div className="login-help" style={{ marginTop: 8 }}>
+            <Link to="/seffaflik">Vatandaş görünümü →</Link>
           </div>
         </div>
       </form>

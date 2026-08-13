@@ -1,6 +1,7 @@
 package com.belediye.bitkisulama.controller;
 
 import com.belediye.bitkisulama.dto.AssignHeadGardenerRequestDto;
+import com.belediye.bitkisulama.dto.RegionBoundaryRequestDto;
 import com.belediye.bitkisulama.dto.RegionRequestDto;
 import com.belediye.bitkisulama.dto.RegionResponseDto;
 import com.belediye.bitkisulama.service.RegionService;
@@ -44,6 +45,13 @@ public class RegionController {
     @PutMapping("/{id}/head-gardener")
     public RegionResponseDto assignHeadGardener(@PathVariable Long id, @RequestBody AssignHeadGardenerRequestDto dto) {
         return regionService.assignHeadGardener(id, dto.getHeadGardenerId());
+    }
+
+    // Haritada çizilen bölge sınırını (zone) kaydeder/günceller. Sadece ADMIN erişebilir
+    // (aynı "/api/region/**" -> hasRole ADMIN kuralı kapsamında, ek bir SecurityConfig değişikliği gerekmez).
+    @PutMapping("/{id}/boundary")
+    public RegionResponseDto updateBoundary(@PathVariable Long id, @RequestBody RegionBoundaryRequestDto dto) {
+        return regionService.updateBoundary(id, dto.getBoundary());
     }
 
     @DeleteMapping("/delete/{id}")

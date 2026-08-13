@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { getRole, getToken, getUsername, saveSession, clearSession } from "../api/client";
-import { login as loginRequest } from "../api/auth";
+import { login as loginRequest, logout as logoutRequest } from "../api/auth";
 
 const AuthContext = createContext(null);
 
@@ -23,6 +23,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    // Token'ı temizlemeden ÖNCE backend'e haber veriyoruz ki gerçek kullanıcı adıyla
+    // "Çıkış yapıldı" logu oluşabilsin. Best-effort: istek başarısız olsa bile
+    // (ör. token zaten süresi dolmuşsa) kullanıcı yine de çıkış yapabilmeli.
+    logoutRequest().catch(() => {
+      // Sessizce yut — çıkışı asla engellemeyelim.
+    });
     clearSession();
     setSession({ token: null, role: null, username: null });
   }, []);

@@ -4,15 +4,18 @@ import com.belediye.bitkisulama.dto.RegionResponseDto;
 import com.belediye.bitkisulama.dto.SprinklerInfoRequestDto;
 import com.belediye.bitkisulama.dto.SprinklerInfoResponseDto;
 import com.belediye.bitkisulama.entity.Region;
+import com.belediye.bitkisulama.enums.AssetType;
 import com.belediye.bitkisulama.enums.Status;
 import com.belediye.bitkisulama.entity.SprinklerInfo;
 import com.belediye.bitkisulama.exception.DeviceNotFoundException;
 import com.belediye.bitkisulama.repository.SprinklerInfoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -34,9 +37,14 @@ public class SprinklerInfoService {
         entity.setDeviceNo(dto.getDeviceNo());
         entity.setStatus(Status.WORKING); // yeni cihaz her zaman "çalışıyor" olarak başlar
 
+        // Tür gönderilmediyse (eski frontend çağrıları / null) varsayılan SULAMA_CIHAZI.
+        entity.setAssetType(dto.getAssetType() != null ? dto.getAssetType() : AssetType.SULAMA_CIHAZI);
+
         // ---- HARİTA İÇİN EKLENEN KOORDİNATLAR ----
         entity.setLatitude(dto.getLatitude());
         entity.setLongitude(dto.getLongitude());
+
+        // createdAt / statusChangedAt entity'nin @PrePersist'inde otomatik set edilir.
 
         return entity;
     }
@@ -50,7 +58,8 @@ public class SprinklerInfoService {
                 region.getIrrigationAreaNo(), region.getIrrigationAreaName(),
                 region.getDescription(),
                 headGardener != null ? headGardener.getId() : null,
-                headGardener != null ? headGardener.getUsername() : null
+                headGardener != null ? headGardener.getUsername() : null,
+                region.getBoundary()
         );
 
         SprinklerInfoResponseDto dto = new SprinklerInfoResponseDto();
@@ -58,10 +67,24 @@ public class SprinklerInfoService {
         dto.setRegion(regionDto);
         dto.setDeviceNo(entity.getDeviceNo());
         dto.setStatus(entity.getStatus());
+        dto.setAssetType(entity.getAssetType());
         dto.setLatitude(entity.getLatitude());
         dto.setLongitude(entity.getLongitude());
         dto.setDescription(entity.getDescription());
+        dto.setCreatedAt(entity.getCreatedAt());
+        dto.setStatusChangedAt(entity.getStatusChangedAt());
+        dto.setFaultType(entity.getFaultType());
+        dto.setLastUpdatedBy(entity.getLastUpdatedBy());
         return dto;
+    }
+
+    private String getCurrentUsername() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null ? authentication.getName() : null;
+    }
+
+    private String deviceLabel(SprinklerInfo d) {
+        return d.getAssetType() + " #" + d.getDeviceNo() + " (bölge: " + d.getRegion().getRegionName() + ")";
     }
 
     // ---- ASIL METODLAR ----
@@ -70,6 +93,15 @@ public class SprinklerInfoService {
     public SprinklerInfoResponseDto deviceSave(SprinklerInfoRequestDto dto) {
         SprinklerInfo saved = sprinklerInfoRepository.save(toEntity(dto));
         log.info("Yeni cihaz kaydedildi: id={}, regionId={}", saved.getId(), dto.getRegionId());
+
+        auditLogService.logAction(
+                AuditActions.CIHAZ_OLUSTURULDU,
+                AuditActions.KAYNAK_CIHAZ,
+                saved.getId(),
+                deviceLabel(saved) + " sisteme eklendi.",
+                null,
+                deviceLabel(saved)
+        );
         return toDto(saved);
     }
 
@@ -80,6 +112,15 @@ public class SprinklerInfoService {
                 .toList();
 
         List<SprinklerInfo> saved = sprinklerInfoRepository.saveAll(entities);
+
+        saved.forEach(d -> auditLogService.logAction(
+                AuditActions.CIHAZ_OLUSTURULDU,
+                AuditActions.KAYNAK_CIHAZ,
+                d.getId(),
+                deviceLabel(d) + " toplu ekleme ile sisteme eklendi.",
+                null,
+                deviceLabel(d)
+        ));
 
         return saved.stream()
                 .map(this::toDto)
@@ -103,13 +144,24 @@ public class SprinklerInfoService {
 
     @Transactional
     public void deviceDelete(Long id) {
-        if (sprinklerInfoRepository.existsById(id)) {
-            sprinklerInfoRepository.deleteById(id);
-            log.info("Cihaz silindi: id={}", id);
-        } else {
+        SprinklerInfo device = sprinklerInfoRepository.findById(id).orElse(null);
+        if (device == null) {
             log.warn("Silinmek istenen cihaz bulunamadı: id={}", id);
             throw new DeviceNotFoundException(id);
         }
+
+        String label = deviceLabel(device);
+        sprinklerInfoRepository.deleteById(id);
+        log.info("Cihaz silindi: id={}", id);
+
+        auditLogService.logAction(
+                AuditActions.CIHAZ_SILINDI,
+                AuditActions.KAYNAK_CIHAZ,
+                id,
+                label + " sistemden silindi.",
+                label,
+                null
+        );
     }
 
     @Transactional
@@ -117,34 +169,76 @@ public class SprinklerInfoService {
         SprinklerInfo devicePresent = sprinklerInfoRepository.findById(id)
                 .orElseThrow(() -> new DeviceNotFoundException(id));
 
+        String oldLabel = deviceLabel(devicePresent);
+
         Region region = regionService.getRegionEntity(updatedInfo.getRegionId());
         devicePresent.setRegion(region);
         devicePresent.setDeviceNo(updatedInfo.getDeviceNo());
 
+        // Tür gönderilmediyse mevcut türü koru (kısmi güncellemeyi bozma).
+        if (updatedInfo.getAssetType() != null) {
+            devicePresent.setAssetType(updatedInfo.getAssetType());
+        }
+
         SprinklerInfo saved = sprinklerInfoRepository.save(devicePresent);
         log.info("Cihaz güncellendi: id={}", saved.getId());
+
+        auditLogService.logAction(
+                AuditActions.CIHAZ_GUNCELLENDI,
+                AuditActions.KAYNAK_CIHAZ,
+                saved.getId(),
+                "Cihaz bilgileri güncellendi.",
+                oldLabel,
+                deviceLabel(saved)
+        );
         return toDto(saved);
     }
 
     @Transactional
-    public SprinklerInfoResponseDto updateStatus(Long id, Status newStatus, String description) {
+    public SprinklerInfoResponseDto updateStatus(Long id, Status newStatus, String description, String faultType) {
         SprinklerInfo device = sprinklerInfoRepository.findById(id)
                 .orElseThrow(() -> new DeviceNotFoundException(id));
         if (newStatus == Status.FAULTY && (description == null || description.isBlank())) {
             throw new IllegalArgumentException("Cihazı arızalı olarak işaretlerken açıklama girmek zorunludur!");
         }
-        device.setStatus(newStatus);
 
+        Status oldStatus = device.getStatus();
+        String oldDescription = device.getDescription();
+
+        device.setStatus(newStatus);
         device.setDescription(newStatus == Status.FAULTY ? description : null);
+        device.setFaultType(newStatus == Status.FAULTY ? faultType : null);
+        device.setStatusChangedAt(LocalDateTime.now());
+        device.setLastUpdatedBy(getCurrentUsername());
+
         SprinklerInfo saved = sprinklerInfoRepository.save(device);
         log.info("Cihaz durumu güncellendi: id={}, newStatus={}", saved.getId(), newStatus);
 
-        // LOGLAMA
-        String islemDetayi = device.getDeviceNo() + " numaralı cihazın durumu " + newStatus.name() + " olarak değiştirildi.";
-        if (newStatus == Status.FAULTY) {
-            islemDetayi += " Sebep: " + description;
+        // Sistemde sadece iki gerçek durum var (WORKING/FAULTY), bu yüzden her geçiş
+        // aslında bir "arıza" olayıdır. Buna göre üç ayrı, anlamlı işlem türü kullanıyoruz;
+        // WORKING->WORKING gibi teorik (gerçekte olmaması gereken) bir çağrı için de
+        // genel bir "Cihaz güncellendi" ile düşmüyoruz, çünkü bu durum sistemde gerçekleşmiyor.
+        String action;
+        String detay;
+        if (oldStatus != Status.FAULTY && newStatus == Status.FAULTY) {
+            action = AuditActions.ARIZA_OLUSTURULDU;
+            detay = deviceLabel(device) + " için arıza bildirildi. Sebep: " + description;
+        } else if (oldStatus == Status.FAULTY && newStatus == Status.FAULTY) {
+            action = AuditActions.ARIZA_GUNCELLENDI;
+            detay = deviceLabel(device) + " için arıza bilgisi güncellendi.";
+        } else { // FAULTY -> WORKING
+            action = AuditActions.ARIZA_KAPATILDI;
+            detay = deviceLabel(device) + " onarıldı, tekrar çalışır duruma alındı.";
         }
-        auditLogService.logAction("CİHAZ_DURUM_GÜNCELLEME", islemDetayi);
+
+        auditLogService.logAction(
+                action,
+                AuditActions.KAYNAK_CIHAZ,
+                saved.getId(),
+                detay,
+                oldStatus + (oldDescription != null ? " (" + oldDescription + ")" : ""),
+                newStatus + (device.getDescription() != null ? " (" + device.getDescription() + ")" : "")
+        );
         return toDto(saved);
     }
 
@@ -159,12 +253,21 @@ public class SprinklerInfoService {
         SprinklerInfo device = sprinklerInfoRepository.findById(id)
                 .orElseThrow(() -> new DeviceNotFoundException(id));
 
+        String oldValue = device.getLatitude() + ", " + device.getLongitude();
+
         device.setLatitude(latitude);
         device.setLongitude(longitude);
 
         SprinklerInfo saved = sprinklerInfoRepository.save(device);
 
-        auditLogService.logAction("KONUM_GÜNCELLEME", device.getDeviceNo() + " numaralı cihazın harita konumu değiştirildi.");
+        auditLogService.logAction(
+                AuditActions.CIHAZ_KONUMU_GUNCELLENDI,
+                AuditActions.KAYNAK_CIHAZ,
+                saved.getId(),
+                deviceLabel(saved) + " haritadaki konumu değiştirildi.",
+                oldValue,
+                latitude + ", " + longitude
+        );
 
         return toDto(saved);
     }

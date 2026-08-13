@@ -35,4 +35,8 @@ public class RegionRequestDto {
     // Opsiyonel: bölge oluşturulurken/güncellenirken doğrudan bir baş bahçivan atanabilir.
     // Boş bırakılırsa bölge "sahipsiz" kalır, daha sonra ayrı bir uçtan (assign-headgardener) atanabilir.
     private Long headGardenerId;
+
+    // Opsiyonel: normalde ayrı /boundary endpoint'inden çizilir, ama form üzerinden de
+    // (ör. bölge kopyalanırken) gönderilebilsin diye burada da kabul ediliyor.
+    private String boundary;
 }

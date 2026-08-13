@@ -1,5 +1,6 @@
 package com.belediye.bitkisulama.dto;
 
+import com.belediye.bitkisulama.enums.AssetType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
@@ -19,4 +20,8 @@ public class SprinklerInfoRequestDto {
 
     private Double latitude;
     private Double longitude;
+
+    // Opsiyonel: gönderilmezse servis katmanında SULAMA_CIHAZI varsayılır,
+    // böylece eski frontend çağrıları (bu alanı hiç göndermeyenler) kırılmaz.
+    private AssetType assetType;
 }

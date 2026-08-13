@@ -25,19 +25,52 @@ public class AuditLogService {
     private final AuditLogRepository auditLogRepository;
     private final UserRepository userRepository;
 
+    // Eski, basit imza — mevcut çağıranları bozmamak için AYNEN korunuyor.
+    // Sadece işlem türü + açıklama gerektiren durumlar için hâlâ kullanılabilir.
     @Transactional
     public void logAction(String action, String details) {
-        String username = "SİSTEM";
+        logAction(action, null, null, details, null, null);
+    }
 
-        // Giriş yapmış mevcut kullanıcıyı Spring Security'den otomatik yakala
-        if (SecurityContextHolder.getContext().getAuthentication() != null) {
-            username = SecurityContextHolder.getContext().getAuthentication().getName();
+    // Yeni, ayrıntılı imza: kaynak türü/ID'si ve eski/yeni değer de kaydedilir.
+    // Kullanıcı adı ve rolü otomatik olarak o an giriş yapmış kullanıcıdan alınır.
+    @Transactional
+    public void logAction(String action, String resourceType, Long resourceId, String details, String oldValue, String newValue) {
+        String username = "SİSTEM";
+        String userRole = null;
+
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null) {
+            username = authentication.getName();
+            User current = userRepository.findByUsername(username).orElse(null);
+            if (current != null && current.getRole() != null) {
+                userRole = current.getRole().name();
+            }
         }
 
         AuditLog auditLog = new AuditLog();
         auditLog.setUsername(username);
+        auditLog.setUserRole(userRole);
         auditLog.setAction(action);
+        auditLog.setResourceType(resourceType);
+        auditLog.setResourceId(resourceId);
         auditLog.setDetails(details);
+        auditLog.setOldValue(oldValue);
+        auditLog.setNewValue(newValue);
+        auditLogRepository.save(auditLog);
+    }
+
+    // Kullanıcı adı bilinen ama henüz SecurityContext'e yazılmamış olabileceği tek durum:
+    // login sırasında token üretilmeden hemen önce. Bu yüzden login logu için ayrı,
+    // username'i doğrudan parametre olarak alan bir metod kullanılıyor.
+    @Transactional
+    public void logLogin(String username, String role) {
+        AuditLog auditLog = new AuditLog();
+        auditLog.setUsername(username);
+        auditLog.setUserRole(role);
+        auditLog.setAction(AuditActions.GIRIS_YAPILDI);
+        auditLog.setResourceType(AuditActions.KAYNAK_AUTH);
+        auditLog.setDetails("'" + username + "' sisteme giriş yaptı.");
         auditLogRepository.save(auditLog);
     }
 
@@ -75,6 +108,11 @@ public class AuditLogService {
             dto.setAction(l.getAction());
             dto.setDetails(l.getDetails());
             dto.setTimestamp(l.getTimestamp());
+            dto.setUserRole(l.getUserRole());
+            dto.setResourceType(l.getResourceType());
+            dto.setResourceId(l.getResourceId());
+            dto.setOldValue(l.getOldValue());
+            dto.setNewValue(l.getNewValue());
             return dto;
         }).toList();
     }

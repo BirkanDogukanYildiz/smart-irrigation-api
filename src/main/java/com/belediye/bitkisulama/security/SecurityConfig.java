@@ -47,18 +47,24 @@ public class SecurityConfig {
                         .accessDeniedHandler(customAccessDeniedHandler)         // rol yetersiz -> düzgün 403 JSON
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Log sistemi geliştirmesi: "Çıkış yapıldı" olayını GERÇEK kullanıcı adıyla
+                        // kaydedebilmek için bu tek path, genel /api/auth/** permitAll kuralından
+                        // ÖNCE (daha spesifik olarak) authenticated() ile işaretlendi. Sıra önemli:
+                        // Spring Security kuralları yukarıdan aşağı, ilk eşleşen kazanır mantığıyla
+                        // çalışır. Login akışı ve diğer /api/auth/** uçları hâlâ herkese açık.
+                        .requestMatchers("/api/auth/logout").authenticated()
+
                         // Herkese açık uç noktalar
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/error").permitAll()
+
+                        // Faz 6-A: Vatandaşa açık, kimlik doğrulama gerektirmeyen şeffaflık özeti.
+                        .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+
                         .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
                         .requestMatchers("/api/logs/**").hasAnyRole("ADMIN", "HEADGARDENER")
 
                         // --- React (Vite build) statik dosyaları ---
-                        // Not: Spring Boot'un PathRequest.toStaticResources() yardımcı sınıfı bu
-                        // projede (Spring Boot 4.1.0, modülerleşmiş autoconfigure yapısı) IDE
-                        // tarafından çözümlenemediği için (import hatası) kullanılmadı; bunun yerine
-                        // bilinen tüm statik dosya uzantılarını (ilk seferde eksik olan .png dahil)
-                        // açıkça listeliyoruz.
                         .requestMatchers(
                                 "/", "/index.html", "/favicon.ico",
                                 "/assets/**",
@@ -66,14 +72,8 @@ public class SecurityConfig {
                                 "/*.svg", "/*.png", "/*.ico", "/*.json"
                         ).permitAll()
 
-                        // React Router (client-side routing) sayfaları: kullanıcı bu adreslere doğrudan
-                        // girdiğinde ya da sayfayı yenilediğinde tarayıcı gerçek bir GET isteği atar.
-                        // Bu istekler önce burada permitAll ile geçmeli, sonra SpaWebConfig onları
-                        // index.html'e yönlendirir (React Router devralır). Yetkilendirme zaten
-                        // React tarafında (rol bazlı menü/route koruması) ve gerçek API çağrılarında
-                        // (aşağıdaki /api/** kuralları) uygulanıyor; bu sayfa kabukları tek başına
-                        // hassas veri içermez.
-                        .requestMatchers("/giris", "/harita", "/cihazlar", "/bolgeler", "/kullanicilar", "/loglar")
+                        // React Router (client-side routing) sayfaları
+                        .requestMatchers("/giris", "/harita", "/cihazlar", "/bolgeler", "/kullanicilar", "/loglar", "/seffaflik")
                         .permitAll()
 
                         // Kullanıcı yönetimi sadece ADMIN

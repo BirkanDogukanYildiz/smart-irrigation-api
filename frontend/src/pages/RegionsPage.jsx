@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Section from "../components/common/Section";
 import Alert from "../components/common/Alert";
 import RegionForm from "../components/regions/RegionForm";
@@ -11,6 +11,7 @@ export default function RegionsPage() {
   const [regions, setRegions] = useState(null);
   const [headGardeners, setHeadGardeners] = useState([]);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   async function loadRegions() {
     try {
@@ -34,6 +35,18 @@ export default function RegionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const filteredRegions = useMemo(() => {
+    if (!regions) return regions;
+    const searchLower = search.trim().toLowerCase();
+    if (!searchLower) return regions;
+    return regions.filter(
+      (r) =>
+        r.regionName.toLowerCase().includes(searchLower) ||
+        r.districtName.toLowerCase().includes(searchLower) ||
+        r.irrigationAreaName.toLowerCase().includes(searchLower)
+    );
+  }, [regions, search]);
+
   async function handleAssign(regionId, headGardenerId) {
     try {
       await assignRegionHeadGardener(regionId, headGardenerId);
@@ -55,10 +68,22 @@ export default function RegionsPage() {
 
   return (
     <>
-      <Section title="Bölgeler">
+      <Section
+        title="Bölgeler"
+        actions={
+          regions && regions.length > 0 ? (
+            <input
+              type="text"
+              placeholder="Bölge, ilçe veya alan ara..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          ) : null
+        }
+      >
         <Alert type="error">{error}</Alert>
         <RegionTable
-          regions={regions}
+          regions={filteredRegions}
           headGardeners={headGardeners}
           onAssignHeadGardener={handleAssign}
           onDelete={handleDelete}

@@ -1,13 +1,27 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import { greenPinIcon, redPinIcon } from "../../utils/mapIcons";
+import { zoneColorForRegion } from "../../utils/zoneColors";
+import { deviceDisplayName } from "../../utils/deviceDisplay";
+import { formatDateTime } from "../../utils/format";
 import "../../styles/map.css";
 
 const ISTANBUL_CENTER = [41.0136, 28.955];
+
+function parseBoundary(boundary) {
+  if (!boundary) return null;
+  try {
+    const coords = JSON.parse(boundary);
+    if (Array.isArray(coords) && coords.length >= 3) return coords;
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * props:
@@ -16,12 +30,75 @@ const ISTANBUL_CENTER = [41.0136, 28.955];
  * - isManager: sürükleyerek konum güncelleme + kaldırma yetkisi
  * - onLocationChange(id, lat, lng)
  * - onRemove(device)
- * - onEmptyClick(lat, lng): boş bir yere tıklanınca (yeni cihaz eklemek için)
+ * - onEmptyClick(lat, lng): boş bir yere tıklanınca (yeni cihaz eklemek için) — çizim modu KAPALIYKEN çalışır
+ * - onViewFaultReport(device): pin popup'ındaki "Arıza Raporunu Görüntüle" butonuna basılınca
+ * - regions: RegionResponseDto[] — zone katmanı ve "Bölgeler" navigasyonu için
+ * - showZones: bölge sınırlarını (zone) saydam katman olarak göster/gizle
+ * - selectedRegionId: haritada tıklanarak seçilmiş/vurgulanmış bölgenin id'si
+ * - onZoneClick(region): bir zone çokgenine tıklanınca çalışır
+ * - drawingRegionId / drawPoints / onDrawPointAdd: admin zone çizim modu (bkz. MapPage)
+ *
+ * ref üzerinden dışa açılan metod:
+ * - flyToRegion(region): bölgenin zone'u varsa sınırlarına, yoksa bölgedeki cihazların
+ *   ortalama konumuna (o da yoksa hiçbir şey yapmadan) haritayı odaklar.
  */
-export default function DeviceMap({ devices, filter, isManager, onLocationChange, onRemove, onEmptyClick }) {
+const DeviceMap = forwardRef(function DeviceMap(
+  {
+    devices,
+    filter,
+    isManager,
+    onLocationChange,
+    onRemove,
+    onEmptyClick,
+    onViewFaultReport,
+    regions = [],
+    showZones = true,
+    selectedRegionId = null,
+    onZoneClick,
+    drawingRegionId = null,
+    drawPoints = [],
+    onDrawPointAdd,
+  },
+  ref
+) {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const clusterRef = useRef(null);
+  const zonesLayerRef = useRef(null);
+  const drawLayerRef = useRef(null);
+
+  // Parent'tan gelen prop'ları güncel tutmak için (event handler'lar closure'da bayatlamasın diye)
+  const stateRef = useRef({});
+  stateRef.current = { onEmptyClick, drawingRegionId, onDrawPointAdd };
+
+  useImperativeHandle(ref, () => ({
+    flyToRegion(region) {
+      const map = mapInstance.current;
+      if (!map || !region) return;
+
+      const coords = parseBoundary(region.boundary);
+      if (coords) {
+        const bounds = L.latLngBounds(coords.map(([lat, lng]) => [lat, lng]));
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 });
+        return;
+      }
+
+      // Zone çizilmemişse: o bölgeye ait cihazların ortalama konumuna git.
+      const regionDevices = (devices || []).filter(
+        (d) => d.region?.id === region.id && d.latitude != null && d.longitude != null
+      );
+      if (regionDevices.length > 0) {
+        const avgLat = regionDevices.reduce((s, d) => s + d.latitude, 0) / regionDevices.length;
+        const avgLng = regionDevices.reduce((s, d) => s + d.longitude, 0) / regionDevices.length;
+        map.setView([avgLat, avgLng], 16);
+        return;
+      }
+
+      window.alert(
+        `"${region.regionName}" için henüz haritada bir sınır çizilmemiş ve konumu bilinen bir ekipmanı yok.`
+      );
+    },
+  }));
 
   useEffect(() => {
     const map = L.map(mapRef.current).setView(ISTANBUL_CENTER, 12);
@@ -43,9 +120,14 @@ export default function DeviceMap({ devices, filter, isManager, onLocationChange
       .layers({ "Sokak Görünümü": osm, "Uydu Görünümü": uydu, "Karanlık Tema": karanlik })
       .addTo(map);
 
-    if (onEmptyClick) {
-      map.on("click", (e) => onEmptyClick(e.latlng.lat, e.latlng.lng));
-    }
+    map.on("click", (e) => {
+      const { drawingRegionId, onDrawPointAdd, onEmptyClick } = stateRef.current;
+      if (drawingRegionId != null) {
+        onDrawPointAdd?.(e.latlng.lat, e.latlng.lng);
+      } else {
+        onEmptyClick?.(e.latlng.lat, e.latlng.lng);
+      }
+    });
 
     mapInstance.current = map;
     setTimeout(() => map.invalidateSize(), 150);
@@ -56,6 +138,7 @@ export default function DeviceMap({ devices, filter, isManager, onLocationChange
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ---- Cihaz marker'ları (kümelenmiş) ----
   useEffect(() => {
     const map = mapInstance.current;
     if (!map) return;
@@ -86,6 +169,9 @@ export default function DeviceMap({ devices, filter, isManager, onLocationChange
     const filtered = filter === "ALL" ? visible : visible.filter((d) => d.status === filter);
 
     filtered.forEach((d) => {
+      // Not: backend şu an sadece iki gerçek durum tutuyor (WORKING / FAULTY).
+      // Üçüncü bir "pasif/bilinmeyen" pin rengi eklemedik çünkü bunu destekleyecek
+      // gerçek bir veri yok — fake bir durum uydurmak yanıltıcı olurdu.
       const marker = L.marker([d.latitude, d.longitude], {
         icon: d.status === "WORKING" ? greenPinIcon : redPinIcon,
         draggable: isManager,
@@ -99,7 +185,7 @@ export default function DeviceMap({ devices, filter, isManager, onLocationChange
       marker.on("dragend", async (e) => {
         const pos = e.target.getLatLng();
         const confirmed = window.confirm(
-          `Cihaz #${d.deviceNo} konumunu değiştirmek üzeresiniz.\n\nYeni konumu kaydetmek istediğinize emin misiniz?`
+          `${deviceDisplayName(d)} konumunu değiştirmek üzeresiniz.\n\nYeni konumu kaydetmek istediğinize emin misiniz?`
         );
         if (!confirmed) {
           e.target.setLatLng(lastPos);
@@ -114,25 +200,39 @@ export default function DeviceMap({ devices, filter, isManager, onLocationChange
         }
       });
 
+      // ---- Popup içeriği: cihaz adı, ID, bölge, durum, son çalışma zamanı ----
       const statusHtml =
         d.status === "WORKING"
           ? `<strong style="color:#1f8a55;">Çalışıyor</strong>`
-          : `<strong style="color:#c1352a;">Arızalı</strong><br/><em>Sebep: ${d.description || ""}</em>`;
+          : `<strong style="color:#c1352a;">Arızalı</strong>`;
 
       const popupEl = document.createElement("div");
       popupEl.innerHTML = `
-        <h4>Cihaz #${d.deviceNo}</h4>
+        <h4>${deviceDisplayName(d)}</h4>
+        <p><strong>Cihaz ID:</strong> #${d.id}</p>
         <p><strong>Bölge:</strong> ${d.region?.regionName ?? ""} (${d.region?.districtName ?? ""})</p>
         <p><strong>Durum:</strong> ${statusHtml}</p>
+        <p><strong>Son Çalışma/Güncelleme:</strong> ${formatDateTime(d.statusChangedAt)}</p>
       `;
+
+      if (d.status === "FAULTY" && onViewFaultReport) {
+        const reportBtn = document.createElement("button");
+        reportBtn.textContent = "Arıza Raporunu Görüntüle";
+        reportBtn.className = "btn btn-danger btn-sm";
+        reportBtn.style.width = "100%";
+        reportBtn.style.marginTop = "8px";
+        reportBtn.onclick = () => onViewFaultReport(d);
+        popupEl.appendChild(reportBtn);
+      }
+
       if (isManager && onRemove) {
-        const btn = document.createElement("button");
-        btn.textContent = "Cihazı Kaldır";
-        btn.className = "btn btn-danger btn-sm";
-        btn.style.width = "100%";
-        btn.style.marginTop = "8px";
-        btn.onclick = () => onRemove(d);
-        popupEl.appendChild(btn);
+        const removeBtn = document.createElement("button");
+        removeBtn.textContent = "Ekipmanı Kaldır";
+        removeBtn.className = "btn btn-secondary btn-sm";
+        removeBtn.style.width = "100%";
+        removeBtn.style.marginTop = "6px";
+        removeBtn.onclick = () => onRemove(d);
+        popupEl.appendChild(removeBtn);
       }
       marker.bindPopup(popupEl);
 
@@ -144,5 +244,87 @@ export default function DeviceMap({ devices, filter, isManager, onLocationChange
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devices, filter, isManager]);
 
-  return <div ref={mapRef} className="big-map" />;
-}
+  // ---- Bölge zone katmanı (saydam çokgenler, tıklanabilir, seçili olan vurgulanır) ----
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!map) return;
+
+    if (zonesLayerRef.current) {
+      map.removeLayer(zonesLayerRef.current);
+      zonesLayerRef.current = null;
+    }
+    if (!showZones) return;
+
+    const zonesLayer = L.layerGroup();
+    regions.forEach((region) => {
+      const coords = parseBoundary(region.boundary);
+      if (!coords) return;
+      // Şu an çizilmekte olan bölgeyi burada tekrar çizmiyoruz, çünkü onu ayrı
+      // (canlı güncellenen) bir katman olarak drawLayerRef üzerinden gösteriyoruz.
+      if (drawingRegionId === region.id) return;
+
+      const isSelected = selectedRegionId === region.id;
+      const color = zoneColorForRegion(region.id);
+      const polygon = L.polygon(coords, {
+        color,
+        weight: isSelected ? 4 : 2,
+        fillColor: color,
+        fillOpacity: isSelected ? 0.32 : 0.15,
+        opacity: isSelected ? 1 : 0.7,
+      });
+      polygon.bindTooltip(region.regionName, { sticky: true });
+      polygon.on("click", (e) => {
+        // Harita üzerinde tıklama zone'dan taşıp map'in genel click handler'ına (yeni
+        // ekipman ekleme/çizim modu) gitmesin diye durduruyoruz.
+        L.DomEvent.stopPropagation(e);
+        onZoneClick?.(region);
+      });
+      polygon.on("mouseover", () => polygon.setStyle({ fillOpacity: Math.min((isSelected ? 0.32 : 0.15) + 0.12, 0.5) }));
+      polygon.on("mouseout", () => polygon.setStyle({ fillOpacity: isSelected ? 0.32 : 0.15 }));
+      zonesLayer.addLayer(polygon);
+    });
+
+    zonesLayer.addTo(map);
+    zonesLayer.eachLayer((l) => l.bringToBack?.());
+    zonesLayerRef.current = zonesLayer;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regions, showZones, drawingRegionId, selectedRegionId]);
+
+  // ---- Çizim modu: şu ana kadar eklenen noktaları canlı göster ----
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!map) return;
+
+    if (drawLayerRef.current) {
+      map.removeLayer(drawLayerRef.current);
+      drawLayerRef.current = null;
+    }
+    if (drawingRegionId == null || drawPoints.length === 0) return;
+
+    const color = zoneColorForRegion(drawingRegionId);
+    const layer = L.layerGroup();
+
+    if (drawPoints.length >= 3) {
+      layer.addLayer(
+        L.polygon(drawPoints, { color, weight: 2, fillColor: color, fillOpacity: 0.25, dashArray: "6 4" })
+      );
+    } else {
+      layer.addLayer(L.polyline(drawPoints, { color, weight: 2, dashArray: "6 4" }));
+    }
+    drawPoints.forEach(([lat, lng], idx) => {
+      layer.addLayer(
+        L.circleMarker([lat, lng], { radius: 5, color, fillColor: "#fff", fillOpacity: 1, weight: 2 }).bindTooltip(
+          String(idx + 1),
+          { permanent: false }
+        )
+      );
+    });
+
+    layer.addTo(map);
+    drawLayerRef.current = layer;
+  }, [drawingRegionId, drawPoints]);
+
+  return <div ref={mapRef} className="big-map" style={{ cursor: drawingRegionId != null ? "crosshair" : "" }} />;
+});
+
+export default DeviceMap;

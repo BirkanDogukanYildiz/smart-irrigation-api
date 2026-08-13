@@ -12,4 +12,11 @@ public class AuditLogResponseDto {
     private String action;
     private String details;
     private LocalDateTime timestamp;
+
+    // Yeni ayrıntı alanları (eski loglarda null olabilir, frontend bunu "—" gösterir)
+    private String userRole;
+    private String resourceType;
+    private Long resourceId;
+    private String oldValue;
+    private String newValue;
 }

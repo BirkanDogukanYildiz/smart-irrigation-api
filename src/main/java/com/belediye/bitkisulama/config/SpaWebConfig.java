@@ -16,6 +16,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * Not: Bu sadece sayfa kabuğunu (HTML) yönlendirir — herhangi bir API endpoint'ini,
  * rolü ya da veri erişimini etkilemez. Gerçek yetkilendirme hâlâ SecurityConfig'teki
  * /api/** kurallarında ve React tarafındaki rol bazlı route koruma mantığında uygulanır.
+ *
+ * "/seffaflik": Faz 6-A vatandaş görünümü sayfası, login gerektirmeden erişilir.
  */
 @Configuration
 public class SpaWebConfig implements WebMvcConfigurer {
@@ -28,5 +30,6 @@ public class SpaWebConfig implements WebMvcConfigurer {
         registry.addViewController("/bolgeler").setViewName("forward:/index.html");
         registry.addViewController("/kullanicilar").setViewName("forward:/index.html");
         registry.addViewController("/loglar").setViewName("forward:/index.html");
+        registry.addViewController("/seffaflik").setViewName("forward:/index.html");
     }
 }

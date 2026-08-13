@@ -39,10 +39,11 @@ public class SprinklerInfoController {
     public SprinklerInfoResponseDto deviceUpdate(@PathVariable Long id, @Valid @RequestBody SprinklerInfoRequestDto updatedInfo) {
         return sprinklerInfoService.deviceUpdate(id, updatedInfo);
     }
-    // Bahçivanın kullandığı endpoint: durumu (FAULTY / WORKING) ve arızaysa açıklamayı günceller
+    // Bahçivanın kullandığı endpoint: durumu (FAULTY / WORKING), arızaysa açıklamayı ve
+    // arıza türünü (opsiyonel) günceller.
     @PutMapping("/status/{id}")
     public SprinklerInfoResponseDto deviceStatusUpdate(@PathVariable Long id, @Valid @RequestBody SprinklerStatusUpdateDto statusDto) {
-        return sprinklerInfoService.updateStatus(id, statusDto.getStatus(), statusDto.getDescription());
+        return sprinklerInfoService.updateStatus(id, statusDto.getStatus(), statusDto.getDescription(), statusDto.getFaultType());
     }
     @GetMapping("/device-info/{id}")
     public SprinklerInfoResponseDto deviceInfo(@PathVariable Long id) {

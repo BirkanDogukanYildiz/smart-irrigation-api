@@ -88,3 +88,48 @@
 .marker-cluster-working { background-color: rgba(31,138,85,0.55); }
 .marker-cluster-faulty { background-color: rgba(193,53,42,0.55); }
 .marker-cluster-mixed { background-color: rgba(181,117,10,0.6); }
+
+/* ============================================================
+   Koyu tema — Leaflet kütüphanesinin kendi CSS'i (leaflet.css)
+   popup/kontrol arka planlarını SABİT beyaz olarak yazıyor; bunlar
+   tasarım token'larımızı kullanmadığı için burada elle geçersiz
+   kılınıyor. Harita karo (tile) katmanları (Sokak/Uydu/Karanlık)
+   bilinçli olarak DEĞİŞTİRİLMEDİ — kullanıcı zaten sağ üstteki
+   katman kontrolünden "Karanlık Tema" karosunu seçebiliyor; site
+   temasıyla otomatik eşleştirmek harici bir özellik genişletmesi
+   olur, bu görevin kapsamı dışında tutuldu.
+   ============================================================ */
+[data-theme="dark"] .leaflet-popup-content-wrapper,
+[data-theme="dark"] .leaflet-popup-tip {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .leaflet-popup-content h4 { color: var(--color-text); }
+[data-theme="dark"] .leaflet-popup-content p { color: var(--color-text-muted); }
+[data-theme="dark"] .leaflet-popup-close-button { color: var(--color-text-muted) !important; }
+
+[data-theme="dark"] .leaflet-control-zoom a,
+[data-theme="dark"] .leaflet-control-layers,
+[data-theme="dark"] .leaflet-bar {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border-strong) !important;
+}
+[data-theme="dark"] .leaflet-control-zoom a:hover {
+  background: var(--color-primary-lighter);
+}
+[data-theme="dark"] .leaflet-control-layers-toggle {
+  filter: invert(1) hue-rotate(180deg);
+}
+[data-theme="dark"] .leaflet-control-layers-expanded {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+[data-theme="dark"] .leaflet-control-attribution {
+  background: rgba(24, 32, 40, 0.75);
+  color: var(--color-text-faint);
+}
+[data-theme="dark"] .leaflet-control-attribution a {
+  color: var(--color-text-muted);
+}

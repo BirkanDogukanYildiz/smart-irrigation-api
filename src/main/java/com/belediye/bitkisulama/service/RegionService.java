@@ -26,6 +26,7 @@ public class RegionService {
     private final RegionRepository regionRepository;
     private final SprinklerInfoRepository sprinklerInfoRepository;
     private final UserRepository userRepository;
+    private final AuditLogService auditLogService;
 
     private RegionResponseDto toDto(Region entity) {
         User headGardener = entity.getHeadGardener();
@@ -39,8 +40,13 @@ public class RegionService {
                 entity.getIrrigationAreaName(),
                 entity.getDescription(),
                 headGardener != null ? headGardener.getId() : null,
-                headGardener != null ? headGardener.getUsername() : null
+                headGardener != null ? headGardener.getUsername() : null,
+                entity.getBoundary()
         );
+    }
+
+    private String regionLabel(Region r) {
+        return r.getRegionName() + " (" + r.getDistrictName() + ")";
     }
 
     // Bölge numarasını sistem otomatik üretir: mevcut en büyük numara + 1
@@ -50,10 +56,6 @@ public class RegionService {
     }
 
     // ---- GÖRÜNÜRLÜK (YETKİ) MANTIĞI ----
-    // Hangi kullanıcı hangi bölgeleri görebilir/kullanabilir:
-    //  - ADMIN: tüm bölgeler
-    //  - HEADGARDENER: sadece admin tarafından kendisine atanmış bölgeler
-    //  - GARDENER: bağlı olduğu baş bahçivana atanmış bölgeler (henüz bir baş bahçivana bağlanmadıysa hiçbiri)
     private User getCurrentUser() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null) return null;
@@ -85,14 +87,23 @@ public class RegionService {
         entity.setIrrigationAreaName(dto.getIrrigationAreaName());
         entity.setDescription(dto.getDescription());
         entity.setHeadGardener(resolveHeadGardener(dto.getHeadGardenerId()));
+        entity.setBoundary(dto.getBoundary());
 
         Region saved = regionRepository.save(entity);
         log.info("Yeni bölge kaydedildi: id={}, regionNo={} (otomatik), regionName={}",
                 saved.getId(), saved.getRegionNo(), saved.getRegionName());
+
+        auditLogService.logAction(
+                AuditActions.BOLGE_OLUSTURULDU,
+                AuditActions.KAYNAK_BOLGE,
+                saved.getId(),
+                regionLabel(saved) + " sisteme eklendi.",
+                null,
+                regionLabel(saved)
+        );
         return toDto(saved);
     }
 
-    // Bu SADECE ADMIN'e açık bir uç noktadan çağrılır, bu yüzden burada görünürlük filtresi UYGULANMAZ.
     @Transactional(readOnly = true)
     public List<RegionResponseDto> listRegions() {
         return getVisibleRegionEntities().stream()
@@ -111,6 +122,8 @@ public class RegionService {
         Region existingRegion = regionRepository.findById(id)
                 .orElseThrow(() -> new RegionNotFoundException(id));
 
+        String oldLabel = regionLabel(existingRegion);
+
         // regionNo'ya dokunulmuyor: bir kez otomatik atandıktan sonra sabit kalır
         existingRegion.setDistrictNo(dto.getDistrictNo());
         existingRegion.setDistrictName(dto.getDistrictName());
@@ -119,22 +132,66 @@ public class RegionService {
         existingRegion.setIrrigationAreaName(dto.getIrrigationAreaName());
         existingRegion.setDescription(dto.getDescription());
         existingRegion.setHeadGardener(resolveHeadGardener(dto.getHeadGardenerId()));
+        // Not: boundary burada BİLİNÇLİ OLARAK dokunulmuyor; sınır SADECE updateBoundary() ile değişir.
 
         Region saved = regionRepository.save(existingRegion);
         log.info("Bölge güncellendi: id={}", saved.getId());
+
+        auditLogService.logAction(
+                AuditActions.BOLGE_GUNCELLENDI,
+                AuditActions.KAYNAK_BOLGE,
+                saved.getId(),
+                "Bölge bilgileri güncellendi.",
+                oldLabel,
+                regionLabel(saved)
+        );
         return toDto(saved);
     }
 
-    // Bölgeye ayrı bir uçtan (tam form doldurmadan) hızlıca baş bahçivan atamak için
     @Transactional
     public RegionResponseDto assignHeadGardener(Long regionId, Long headGardenerId) {
         Region region = regionRepository.findById(regionId)
                 .orElseThrow(() -> new RegionNotFoundException(regionId));
 
+        String oldHeadGardener = region.getHeadGardener() != null ? region.getHeadGardener().getUsername() : "Atanmadı";
+
         region.setHeadGardener(resolveHeadGardener(headGardenerId));
         Region saved = regionRepository.save(region);
 
+        String newHeadGardener = saved.getHeadGardener() != null ? saved.getHeadGardener().getUsername() : "Atanmadı";
         log.info("Bölgeye baş bahçivan atandı: regionId={}, headGardenerId={}", regionId, headGardenerId);
+
+        auditLogService.logAction(
+                AuditActions.BOLGE_GUNCELLENDI,
+                AuditActions.KAYNAK_BOLGE,
+                saved.getId(),
+                regionLabel(saved) + " bölgesinin baş bahçivan ataması değiştirildi.",
+                "Baş Bahçivan: " + oldHeadGardener,
+                "Baş Bahçivan: " + newHeadGardener
+        );
+        return toDto(saved);
+    }
+
+    @Transactional
+    public RegionResponseDto updateBoundary(Long regionId, String boundary) {
+        Region region = regionRepository.findById(regionId)
+                .orElseThrow(() -> new RegionNotFoundException(regionId));
+
+        boolean hadBoundary = region.getBoundary() != null;
+        region.setBoundary(boundary);
+        Region saved = regionRepository.save(region);
+
+        log.info("Bölge sınırı (zone) güncellendi: regionId={}, boundary={}",
+                regionId, boundary == null ? "kaldırıldı" : "kaydedildi");
+
+        auditLogService.logAction(
+                AuditActions.BOLGE_GUNCELLENDI,
+                AuditActions.KAYNAK_BOLGE,
+                saved.getId(),
+                regionLabel(saved) + " bölgesinin harita sınırı " + (boundary == null ? "kaldırıldı." : "güncellendi."),
+                hadBoundary ? "Sınır: mevcuttu" : "Sınır: yoktu",
+                boundary != null ? "Sınır: güncellendi" : "Sınır: kaldırıldı"
+        );
         return toDto(saved);
     }
 
@@ -158,9 +215,20 @@ public class RegionService {
             throw new RegionCanNotDeleteException(id, linkedDeviceCount);
         }
 
+        String label = regionLabel(region);
         regionRepository.delete(region);
         log.info("Bölge silindi: id={}, regionName={}", region.getId(), region.getRegionName());
+
+        auditLogService.logAction(
+                AuditActions.BOLGE_SILINDI,
+                AuditActions.KAYNAK_BOLGE,
+                id,
+                label + " sistemden silindi.",
+                label,
+                null
+        );
     }
+
     // SprinklerInfoService'in kullanacağı, Entity dönen yardımcı metod
     public Region getRegionEntity(Long id) {
         return regionRepository.findById(id)

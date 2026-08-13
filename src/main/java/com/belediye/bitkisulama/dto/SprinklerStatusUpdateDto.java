@@ -15,4 +15,8 @@ public class SprinklerStatusUpdateDto {
     // FAULTY seçildiğinde zorunlu; servis katmanında kontrol ediliyor
     // (WORKING'e çekerken göndermeye gerek yok)
     private String description;
+
+    // Opsiyonel: arıza raporunda gösterilecek arıza türü (ör. "Vana Arızası").
+    // Boş bırakılabilir, zorunlu değil.
+    private String faultType;
 }

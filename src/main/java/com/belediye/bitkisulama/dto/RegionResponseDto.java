@@ -20,4 +20,7 @@ public class RegionResponseDto {
     // Bu bölgeden sorumlu baş bahçivan (admin tarafından atanır). Atanmamışsa ikisi de null gelir.
     private Long headGardenerId;
     private String headGardenerUsername;
+
+    // Haritadaki zone çokgeni, JSON string: "[[lat,lng],[lat,lng],...]". Hiç çizilmediyse null.
+    private String boundary;
 }

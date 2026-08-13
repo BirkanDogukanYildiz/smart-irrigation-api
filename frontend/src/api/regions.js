@@ -21,6 +21,15 @@ export function assignRegionHeadGardener(id, headGardenerId) {
   });
 }
 
+// PUT /api/region/{id}/boundary { boundary }
+// coords: [[lat, lng], [lat, lng], ...] dizisi (en az 3 nokta). null gönderilirse zone kaldırılır.
+export function updateRegionBoundary(id, coords) {
+  return apiCall(`/api/region/${id}/boundary`, {
+    method: "PUT",
+    body: JSON.stringify({ boundary: coords ? JSON.stringify(coords) : null }),
+  });
+}
+
 // DELETE /api/region/delete/{id}
 export function deleteRegion(id) {
   return apiCall(`/api/region/delete/${id}`, { method: "DELETE" });

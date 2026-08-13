@@ -45,4 +45,12 @@ public class Region {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "head_gardener_id")
     private User headGardener;
+
+    // Haritada bölgenin sınırını (zone) çizen çokgenin köşe noktaları.
+    // JSON string olarak saklanır: "[[lat,lng],[lat,lng],...]" (Leaflet L.polygon formatına birebir uyumlu).
+    // Admin haritadan çizip kaydetmeden önce null'dır — bölge o zamana kadar haritada zone olarak görünmez,
+    // ama var olan cihazlarıyla (varsa) haritada görünmeye devam eder.
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String boundary;
 }
