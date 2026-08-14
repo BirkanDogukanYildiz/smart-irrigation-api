@@ -5,6 +5,8 @@ import com.belediye.bitkisulama.dto.UserDeleteRequestDto;
 import com.belediye.bitkisulama.dto.UserDeleteResponseDto;
 import com.belediye.bitkisulama.dto.UserRegisterRequestDto;
 import com.belediye.bitkisulama.dto.UserResponseDto;
+import com.belediye.bitkisulama.dto.PageResponseDto;
+import com.belediye.bitkisulama.enums.Role;
 import com.belediye.bitkisulama.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -34,6 +36,17 @@ public class UserController {
     @GetMapping("/list")
     public List<UserResponseDto> listUsers() {
         return userService.listUsers();
+    }
+
+    // Server-side sayfalama/filtreleme/arama.
+    @GetMapping("/search")
+    public PageResponseDto<UserResponseDto> searchUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Role role,
+            @RequestParam(required = false) String q
+    ) {
+        return userService.searchUsers(page, size, role, q);
     }
 
     // Bir bahçivanı bir baş bahçivana bağlar (ya da headGardenerId=null göndererek atamayı kaldırır)

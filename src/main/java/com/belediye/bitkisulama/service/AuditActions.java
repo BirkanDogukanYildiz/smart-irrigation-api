@@ -29,6 +29,9 @@ public final class AuditActions {
     public static final String ARIZA_GUNCELLENDI = "Arıza güncellendi";
     public static final String ARIZA_KAPATILDI = "Arıza kapatıldı";
 
+    // Bakım (yeni, gerçek bir özellik olarak eklendi — bkz. MaintenanceService)
+    public static final String BAKIM_KAYDI_EKLENDI = "Bakım kaydı eklendi";
+
     // Bölge
     public static final String BOLGE_OLUSTURULDU = "Bölge oluşturuldu";
     public static final String BOLGE_GUNCELLENDI = "Bölge güncellendi";

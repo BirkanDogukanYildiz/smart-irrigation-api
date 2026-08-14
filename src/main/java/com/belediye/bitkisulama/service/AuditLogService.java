@@ -122,4 +122,34 @@ public class AuditLogService {
         if (authentication == null) return null;
         return userRepository.findByUsername(authentication.getName()).orElse(null);
     }
+
+    // Server-side sayfalama/filtreleme/arama. Temel veri seti getLogs()'tan gelir —
+    // yani rol bazlı görünürlük (ADMIN hepsi, HEADGARDENER sadece kendi ekibi) burada da
+    // aynen korunur, filtreleme/arama sadece o kümenin ÜZERİNE uygulanır.
+    @Transactional(readOnly = true)
+    public com.belediye.bitkisulama.dto.PageResponseDto<AuditLogResponseDto> searchLogs(
+            int page, int size, String action, String username, String resourceType,
+            String query, java.time.LocalDate dateFrom, java.time.LocalDate dateTo
+    ) {
+        List<AuditLogResponseDto> base = getLogs();
+
+        java.util.stream.Stream<AuditLogResponseDto> stream = base.stream();
+        if (action != null && !action.isBlank()) stream = stream.filter(l -> action.equals(l.getAction()));
+        if (username != null && !username.isBlank()) stream = stream.filter(l -> username.equals(l.getUsername()));
+        if (resourceType != null && !resourceType.isBlank()) stream = stream.filter(l -> resourceType.equals(l.getResourceType()));
+        if (dateFrom != null) {
+            stream = stream.filter(l -> l.getTimestamp() != null && !l.getTimestamp().toLocalDate().isBefore(dateFrom));
+        }
+        if (dateTo != null) {
+            stream = stream.filter(l -> l.getTimestamp() != null && !l.getTimestamp().toLocalDate().isAfter(dateTo));
+        }
+        if (query != null && !query.isBlank()) {
+            String q = query.toLowerCase();
+            stream = stream.filter(l -> l.getDetails() != null && l.getDetails().toLowerCase().contains(q));
+        }
+
+        List<AuditLogResponseDto> filtered = stream.toList(); // getLogs() zaten tarihe göre azalan sıralı geliyor
+
+        return PageUtil.paginate(filtered, page, size);
+    }
 }

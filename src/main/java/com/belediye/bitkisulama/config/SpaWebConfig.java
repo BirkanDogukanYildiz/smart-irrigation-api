@@ -26,8 +26,11 @@ public class SpaWebConfig implements WebMvcConfigurer {
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addViewController("/giris").setViewName("forward:/index.html");
         registry.addViewController("/harita").setViewName("forward:/index.html");
-        registry.addViewController("/cihazlar").setViewName("forward:/index.html");
-        registry.addViewController("/bolgeler").setViewName("forward:/index.html");
+        // /cihazlar/** ve /bolgeler/** : liste sayfasının yanında artık /cihazlar/:id ve
+        // /bolgeler/:id detay sayfaları da var (paylaşılabilir URL'ler); wildcard pattern
+        // ikisini de tek kuralla kapsıyor.
+        registry.addViewController("/cihazlar/**").setViewName("forward:/index.html");
+        registry.addViewController("/bolgeler/**").setViewName("forward:/index.html");
         registry.addViewController("/kullanicilar").setViewName("forward:/index.html");
         registry.addViewController("/loglar").setViewName("forward:/index.html");
         registry.addViewController("/seffaflik").setViewName("forward:/index.html");

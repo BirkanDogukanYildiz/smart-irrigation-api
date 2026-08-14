@@ -1,5 +1,6 @@
 package com.belediye.bitkisulama.service;
 
+import com.belediye.bitkisulama.dto.NamedOptionDto;
 import com.belediye.bitkisulama.dto.RegionRequestDto;
 import com.belediye.bitkisulama.dto.RegionResponseDto;
 import com.belediye.bitkisulama.entity.Region;
@@ -16,7 +17,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -55,6 +59,59 @@ public class RegionService {
         return (maxNo == null ? 0 : maxNo) + 1;
     }
 
+    // İlçe/park alanı numaraları ELLE girilmiyor: var olan bir isim seçildiyse o ismin
+    // daha önce kullanılan numarası aynen korunur (tutarlılık için); yeni bir isimse
+    // sistem otomatik, mevcut en büyük numaranın bir fazlasını atar (regionNo ile aynı desen).
+    private Integer resolveDistrictNo(String districtName) {
+        return regionRepository.findAll().stream()
+                .filter(r -> r.getDistrictName().equalsIgnoreCase(districtName))
+                .map(Region::getDistrictNo)
+                .findFirst()
+                .orElseGet(() -> {
+                    Integer max = regionRepository.findAll().stream()
+                            .map(Region::getDistrictNo)
+                            .max(Comparator.naturalOrder())
+                            .orElse(0);
+                    return max + 1;
+                });
+    }
+
+    private Integer resolveParkAlaniNo(String parkAlaniName) {
+        return regionRepository.findAll().stream()
+                .filter(r -> r.getIrrigationAreaName().equalsIgnoreCase(parkAlaniName))
+                .map(Region::getIrrigationAreaNo)
+                .findFirst()
+                .orElseGet(() -> {
+                    Integer max = regionRepository.findAll().stream()
+                            .map(Region::getIrrigationAreaNo)
+                            .max(Comparator.naturalOrder())
+                            .orElse(0);
+                    return max + 1;
+                });
+    }
+
+    // Bölge ekleme/düzenleme formunda "var olanlardan seç" dropdown'ını doldurmak için.
+    // Aynı isim birden fazla bölgede tekrar edebildiğinden distinct isimle tekilleştiriliyor.
+    @Transactional(readOnly = true)
+    public List<NamedOptionDto> listDistricts() {
+        Map<String, NamedOptionDto> distinct = new LinkedHashMap<>();
+        regionRepository.findAll().forEach(r ->
+                distinct.putIfAbsent(r.getDistrictName(), new NamedOptionDto(r.getDistrictNo(), r.getDistrictName())));
+        return distinct.values().stream()
+                .sorted(Comparator.comparing(NamedOptionDto::getName))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<NamedOptionDto> listParkAlanlari() {
+        Map<String, NamedOptionDto> distinct = new LinkedHashMap<>();
+        regionRepository.findAll().forEach(r ->
+                distinct.putIfAbsent(r.getIrrigationAreaName(), new NamedOptionDto(r.getIrrigationAreaNo(), r.getIrrigationAreaName())));
+        return distinct.values().stream()
+                .sorted(Comparator.comparing(NamedOptionDto::getName))
+                .toList();
+    }
+
     // ---- GÖRÜNÜRLÜK (YETKİ) MANTIĞI ----
     private User getCurrentUser() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -79,11 +136,11 @@ public class RegionService {
     @Transactional
     public RegionResponseDto saveRegion(RegionRequestDto dto) {
         Region entity = new Region();
-        entity.setDistrictNo(dto.getDistrictNo());
+        entity.setDistrictNo(resolveDistrictNo(dto.getDistrictName()));
         entity.setDistrictName(dto.getDistrictName());
         entity.setRegionNo(nextRegionNo()); // <-- otomatik atama, kullanıcıdan alınmıyor
         entity.setRegionName(dto.getRegionName());
-        entity.setIrrigationAreaNo(dto.getIrrigationAreaNo());
+        entity.setIrrigationAreaNo(resolveParkAlaniNo(dto.getIrrigationAreaName()));
         entity.setIrrigationAreaName(dto.getIrrigationAreaName());
         entity.setDescription(dto.getDescription());
         entity.setHeadGardener(resolveHeadGardener(dto.getHeadGardenerId()));
@@ -111,9 +168,20 @@ public class RegionService {
                 .toList();
     }
 
+    // /bolgeler/:id detay sayfası (paylaşılabilir) buradan besleniyor. Görünürlük kontrolü
+    // BİLİNÇLİ OLARAK eklendi: bu endpoint önceden frontend tarafından hiç çağrılmıyordu,
+    // şimdi doğrudan URL üzerinden erişilebilir bir sayfaya bağlandığı için, listRegions()'ta
+    // zaten uygulanan bölge görünürlüğü kuralına burada da uyuluyor (aksi halde bir kullanıcı
+    // ID'sini tahmin ederek kapsamı dışındaki bir bölgenin detayını görebilirdi).
     public RegionResponseDto getRegionInfo(Long id) {
         Region entity = regionRepository.findById(id)
                 .orElseThrow(() -> new RegionNotFoundException(id));
+
+        boolean gorunur = getVisibleRegionEntities().stream().anyMatch(r -> r.getId().equals(id));
+        if (!gorunur) {
+            throw new RegionNotFoundException(id);
+        }
+
         return toDto(entity);
     }
 
@@ -125,10 +193,10 @@ public class RegionService {
         String oldLabel = regionLabel(existingRegion);
 
         // regionNo'ya dokunulmuyor: bir kez otomatik atandıktan sonra sabit kalır
-        existingRegion.setDistrictNo(dto.getDistrictNo());
+        existingRegion.setDistrictNo(resolveDistrictNo(dto.getDistrictName()));
         existingRegion.setDistrictName(dto.getDistrictName());
         existingRegion.setRegionName(dto.getRegionName());
-        existingRegion.setIrrigationAreaNo(dto.getIrrigationAreaNo());
+        existingRegion.setIrrigationAreaNo(resolveParkAlaniNo(dto.getIrrigationAreaName()));
         existingRegion.setIrrigationAreaName(dto.getIrrigationAreaName());
         existingRegion.setDescription(dto.getDescription());
         existingRegion.setHeadGardener(resolveHeadGardener(dto.getHeadGardenerId()));

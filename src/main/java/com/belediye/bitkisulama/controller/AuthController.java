@@ -4,10 +4,13 @@ import com.belediye.bitkisulama.dto.LoginRequestDto;
 import com.belediye.bitkisulama.dto.LoginResponseDto;
 import com.belediye.bitkisulama.enums.Role;
 import com.belediye.bitkisulama.entity.User;
+import com.belediye.bitkisulama.exception.TooManyLoginAttemptsException;
 import com.belediye.bitkisulama.repository.UserRepository;
 import com.belediye.bitkisulama.security.JwtService;
+import com.belediye.bitkisulama.security.LoginRateLimiter;
 import com.belediye.bitkisulama.service.AuditActions;
 import com.belediye.bitkisulama.service.AuditLogService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,30 +31,45 @@ public class AuthController {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final LoginRateLimiter loginRateLimiter;
 
     public AuthController(AuthenticationManager authenticationManager,
                           JwtService jwtService,
                           UserRepository userRepository,
-                          AuditLogService auditLogService) {
+                          AuditLogService auditLogService,
+                          LoginRateLimiter loginRateLimiter) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.loginRateLimiter = loginRateLimiter;
     }
 
     @PostMapping("/login")
-    public LoginResponseDto login(@RequestBody LoginRequestDto loginRequest) {
+    public LoginResponseDto login(@RequestBody LoginRequestDto loginRequest, HttpServletRequest request) {
+        // Rate limit anahtarı olarak istemci IP'si kullanılıyor. Not: proxy/load balancer
+        // arkasında çalışılırsa (X-Forwarded-For) gerçek istemci IP'sini yansıtmayabilir —
+        // bu projenin mevcut tek-instance dev/deploy yapısında bir sorun teşkil etmiyor.
+        String clientKey = request.getRemoteAddr();
+
+        long blockedSeconds = loginRateLimiter.getBlockedSecondsRemaining(clientKey);
+        if (blockedSeconds > 0) {
+            throw new TooManyLoginAttemptsException(blockedSeconds);
+        }
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
             );
         } catch (AuthenticationException ex) {
+            loginRateLimiter.recordFailure(clientKey);
             log.warn("Başarısız giriş denemesi: username={}", loginRequest.getUsername());
             // Not: başarısız giriş denemeleri BİLİNÇLİ OLARAK İşlem Geçmişi'ne yazılmıyor.
             // Var olmayan/yanlış kullanıcı adlarıyla yapılan denemeleri loglamak, İşlem
             // Geçmişi'ni (gerçek kullanıcıların gerçek işlemlerini takip etmesi gereken bir
             // ekranı) spam'e çevirebilir; bu, "sadece gerçek işlemler için log türü ekle"
             // talimatıyla ayrı bir konu (brute-force izleme) olduğu için kapsam dışı bırakıldı.
+            // Brute-force koruması artık LoginRateLimiter ile ayrıca sağlanıyor.
             throw ex;
         }
 
@@ -61,6 +79,9 @@ public class AuthController {
 
         Role role = user.getRole();
         String token = jwtService.generateToken(user.getUsername());
+
+        // Başarılı giriş: bu IP için önceki başarısız deneme sayacı tamamen temizlenir.
+        loginRateLimiter.recordSuccess(clientKey);
 
         log.info("Başarılı giriş: username={}, role={}", user.getUsername(), role);
         auditLogService.logLogin(user.getUsername(), role.name());

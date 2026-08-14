@@ -2,17 +2,28 @@ import { useEffect, useMemo, useState } from "react";
 import Section from "../components/common/Section";
 import Alert from "../components/common/Alert";
 import Button from "../components/common/Button";
+import PaginationControls from "../components/common/PaginationControls";
 import LogTable from "../components/logs/LogTable";
 import LogDetailModal from "../components/logs/LogDetailModal";
-import { listLogs } from "../api/logs";
+import { listLogs, searchLogs } from "../api/logs";
+import { exportLogsCsv } from "../api/export";
 import { resourceLabel } from "../utils/auditActions";
 
 const PAGE_SIZE = 20;
 
 export default function LogsPage() {
   const [logs, setLogs] = useState(null);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(0);
+
   const [error, setError] = useState("");
   const [selectedLog, setSelectedLog] = useState(null);
+
+  // Filtre dropdown seçenekleri (işlem türü/kullanıcı/kaynak) — sayfalanmış tablo
+  // verisinden BAĞIMSIZ, tüm loglardan (bir kez, filtresiz) türetiliyor; yoksa
+  // dropdown sadece o an görünen sayfadaki değerleri gösterirdi.
+  const [filterOptions, setFilterOptions] = useState({ actions: [], users: [], resourceTypes: [] });
 
   const [actionFilter, setActionFilter] = useState("");
   const [userFilter, setUserFilter] = useState("");
@@ -20,61 +31,52 @@ export default function LogsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
 
   useEffect(() => {
     listLogs()
-      .then(setLogs)
-      .catch((e) => setError(e.message));
+      .then((all) => {
+        setFilterOptions({
+          actions: [...new Set(all.map((l) => l.action))].sort(),
+          users: [...new Set(all.map((l) => l.username))].sort(),
+          resourceTypes: [...new Set(all.map((l) => l.resourceType).filter(Boolean))].sort(),
+        });
+      })
+      .catch(() => {
+        // Filtre seçenekleri yüklenemezse dropdown'lar boş kalır, arama yine de çalışır.
+      });
   }, []);
 
-  const actions = useMemo(() => {
-    if (!logs) return [];
-    return [...new Set(logs.map((l) => l.action))].sort();
-  }, [logs]);
+  async function loadLogs() {
+    try {
+      const result = await searchLogs({
+        page,
+        size: PAGE_SIZE,
+        action: actionFilter || undefined,
+        username: userFilter || undefined,
+        resourceType: resourceFilter || undefined,
+        q: search || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      });
+      setLogs(result.content);
+      setTotalPages(result.totalPages);
+      setTotalElements(result.totalElements);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
 
-  const users = useMemo(() => {
-    if (!logs) return [];
-    return [...new Set(logs.map((l) => l.username))].sort();
-  }, [logs]);
-
-  const resourceTypes = useMemo(() => {
-    if (!logs) return [];
-    return [...new Set(logs.map((l) => l.resourceType).filter(Boolean))].sort();
-  }, [logs]);
-
-  const filteredLogs = useMemo(() => {
-    if (!logs) return logs;
-    const searchLower = search.trim().toLowerCase();
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo + "T23:59:59") : null;
-
-    return logs.filter((l) => {
-      if (actionFilter && l.action !== actionFilter) return false;
-      if (userFilter && l.username !== userFilter) return false;
-      if (resourceFilter && l.resourceType !== resourceFilter) return false;
-      if (from || to) {
-        const ts = l.timestamp ? new Date(l.timestamp) : null;
-        if (!ts || Number.isNaN(ts.getTime())) return false;
-        if (from && ts < from) return false;
-        if (to && ts > to) return false;
-      }
-      if (searchLower && !(l.details || "").toLowerCase().includes(searchLower)) return false;
-      return true;
-    });
-  }, [logs, actionFilter, userFilter, resourceFilter, dateFrom, dateTo, search]);
-
-  // Filtre değiştiğinde sayfayı başa al — yoksa 3. sayfadayken filtre daraltılırsa boş sayfa görünebilir.
   useEffect(() => {
-    setPage(1);
+    loadLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, actionFilter, userFilter, resourceFilter, dateFrom, dateTo, search]);
+
+  useEffect(() => {
+    setPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionFilter, userFilter, resourceFilter, dateFrom, dateTo, search]);
 
-  const totalPages = filteredLogs ? Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE)) : 1;
-  const pagedLogs = useMemo(() => {
-    if (!filteredLogs) return filteredLogs;
-    const start = (page - 1) * PAGE_SIZE;
-    return filteredLogs.slice(start, start + PAGE_SIZE);
-  }, [filteredLogs, page]);
+  const hasActiveFilter = actionFilter || userFilter || resourceFilter || dateFrom || dateTo || search;
 
   function clearFilters() {
     setActionFilter("");
@@ -85,71 +87,83 @@ export default function LogsPage() {
     setSearch("");
   }
 
-  const hasActiveFilter = actionFilter || userFilter || resourceFilter || dateFrom || dateTo || search;
+  async function handleExport() {
+    try {
+      await exportLogsCsv();
+    } catch (e) {
+      window.alert("İndirme başarısız: " + e.message);
+    }
+  }
 
   return (
-    <Section title="İşlem Geçmişi" subtitle="Sistemde yapılan işlemlerin ayrıntılı kaydı.">
+    <Section
+      title="İşlem Geçmişi"
+      subtitle="Sistemde yapılan işlemlerin ayrıntılı kaydı."
+      actions={
+        <Button size="sm" variant="secondary" onClick={handleExport}>
+          Dışa Aktar (CSV)
+        </Button>
+      }
+    >
       <Alert type="error">{error}</Alert>
 
-      {logs && logs.length > 0 && (
-        <div className="form-grid" style={{ marginBottom: "var(--space-4)" }}>
-          <div className="form-field">
-            <label htmlFor="logActionFilter">İşlem Türü</label>
-            <select id="logActionFilter" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
-              <option value="">Tümü</option>
-              {actions.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form-field">
-            <label htmlFor="logUserFilter">Kullanıcı</label>
-            <select id="logUserFilter" value={userFilter} onChange={(e) => setUserFilter(e.target.value)}>
-              <option value="">Tümü</option>
-              {users.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form-field">
-            <label htmlFor="logResourceFilter">Kaynak/Tür</label>
-            <select id="logResourceFilter" value={resourceFilter} onChange={(e) => setResourceFilter(e.target.value)}>
-              <option value="">Tümü</option>
-              {resourceTypes.map((r) => (
-                <option key={r} value={r}>
-                  {resourceLabel(r)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form-field">
-            <label htmlFor="logDateFrom">Başlangıç Tarihi</label>
-            <input id="logDateFrom" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          </div>
-          <div className="form-field">
-            <label htmlFor="logDateTo">Bitiş Tarihi</label>
-            <input id="logDateTo" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </div>
-          <div className="form-field">
-            <label htmlFor="logSearch">Detayda Ara</label>
-            <input
-              id="logSearch"
-              type="text"
-              placeholder="Örn. cihaz numarası, sebep..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+      <div className="form-grid" style={{ marginBottom: "var(--space-4)" }}>
+        <div className="form-field">
+          <label htmlFor="logActionFilter">İşlem Türü</label>
+          <select id="logActionFilter" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
+            <option value="">Tümü</option>
+            {filterOptions.actions.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
         </div>
-      )}
+        <div className="form-field">
+          <label htmlFor="logUserFilter">Kullanıcı</label>
+          <select id="logUserFilter" value={userFilter} onChange={(e) => setUserFilter(e.target.value)}>
+            <option value="">Tümü</option>
+            {filterOptions.users.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor="logResourceFilter">Kaynak/Tür</label>
+          <select id="logResourceFilter" value={resourceFilter} onChange={(e) => setResourceFilter(e.target.value)}>
+            <option value="">Tümü</option>
+            {filterOptions.resourceTypes.map((r) => (
+              <option key={r} value={r}>
+                {resourceLabel(r)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor="logDateFrom">Başlangıç Tarihi</label>
+          <input id="logDateFrom" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        </div>
+        <div className="form-field">
+          <label htmlFor="logDateTo">Bitiş Tarihi</label>
+          <input id="logDateTo" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        </div>
+        <div className="form-field">
+          <label htmlFor="logSearch">Detayda Ara</label>
+          <input
+            id="logSearch"
+            type="text"
+            placeholder="Örn. cihaz numarası, sebep..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
 
-      {hasActiveFilter && filteredLogs && (
+      {hasActiveFilter && (
         <p className="hint" style={{ marginBottom: "var(--space-3)" }}>
-          {filteredLogs.length} / {logs.length} kayıt gösteriliyor.{" "}
+          {totalElements} kayıt bulundu.{" "}
           <button
             type="button"
             onClick={clearFilters}
@@ -160,26 +174,8 @@ export default function LogsPage() {
         </p>
       )}
 
-      <LogTable logs={pagedLogs} onViewDetail={setSelectedLog} />
-
-      {filteredLogs && filteredLogs.length > PAGE_SIZE && (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: "var(--space-4)" }}>
-          <Button size="sm" variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
-            ← Önceki
-          </Button>
-          <span className="hint">
-            Sayfa {page} / {totalPages}
-          </span>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-          >
-            Sonraki →
-          </Button>
-        </div>
-      )}
+      <LogTable logs={logs} onViewDetail={setSelectedLog} />
+      <PaginationControls page={page} totalPages={totalPages} totalElements={totalElements} onPageChange={setPage} />
 
       <LogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
     </Section>

@@ -6,11 +6,11 @@ import "../../styles/layout.css";
 export default function NavBar() {
   const { role } = useAuth();
 
+  // Harita ve Cihazlar sekmeleri birleştirildi — artık tek bir link (/harita).
   const links = [
     { to: "/", label: "Anasayfa", visible: true },
     { to: "/bolgeler", label: "Bölgeler", visible: isAdmin(role) },
-    { to: "/harita", label: "Harita Görünümü", visible: true },
-    { to: "/cihazlar", label: "Cihazlar", visible: isManager(role) },
+    { to: "/harita", label: "Harita ve Cihazlar", visible: true },
     { to: "/kullanicilar", label: "Kullanıcılar", visible: isAdmin(role) },
     { to: "/loglar", label: "İşlem Geçmişi", visible: isManager(role) },
   ].filter((l) => l.visible);

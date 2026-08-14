@@ -3,6 +3,9 @@ package com.belediye.bitkisulama.controller;
 import com.belediye.bitkisulama.dto.SprinklerStatusUpdateDto;
 import com.belediye.bitkisulama.dto.SprinklerInfoRequestDto;
 import com.belediye.bitkisulama.dto.SprinklerInfoResponseDto;
+import com.belediye.bitkisulama.dto.PageResponseDto;
+import com.belediye.bitkisulama.enums.AssetType;
+import com.belediye.bitkisulama.enums.Status;
 import com.belediye.bitkisulama.service.SprinklerInfoService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +32,22 @@ public class SprinklerInfoController {
     @GetMapping("/list")
     public List<SprinklerInfoResponseDto> sprinklerDeviceGeneralTable() {
         return sprinklerInfoService.sprinklerDeviceGeneral();
+    }
+
+    // Server-side sayfalama/filtreleme/arama. "Arızalar" görünümü için ayrı bir endpoint
+    // yok — aynı uç nokta status=FAULTY parametresiyle çağrılır (bkz. SprinklerInfoService).
+    @GetMapping("/search")
+    public PageResponseDto<SprinklerInfoResponseDto> searchDevices(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Status status,
+            @RequestParam(required = false) AssetType assetType,
+            @RequestParam(required = false) Long regionId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir
+    ) {
+        return sprinklerInfoService.searchDevices(page, size, status, assetType, regionId, q, sortBy, sortDir);
     }
     @DeleteMapping("/delete/{id}")
     public String deviceDelete(@PathVariable Long id) {

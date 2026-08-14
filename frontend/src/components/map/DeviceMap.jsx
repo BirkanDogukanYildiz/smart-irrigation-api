@@ -4,10 +4,11 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import { greenPinIcon, redPinIcon } from "../../utils/mapIcons";
+import { deviceSymbolIcon } from "../../utils/mapIcons";
 import { zoneColorForRegion } from "../../utils/zoneColors";
 import { deviceDisplayName } from "../../utils/deviceDisplay";
 import { formatDateTime } from "../../utils/format";
+import { durationSince } from "../../utils/durationSince";
 import "../../styles/map.css";
 
 const ISTANBUL_CENTER = [41.0136, 28.955];
@@ -173,7 +174,7 @@ const DeviceMap = forwardRef(function DeviceMap(
       // Üçüncü bir "pasif/bilinmeyen" pin rengi eklemedik çünkü bunu destekleyecek
       // gerçek bir veri yok — fake bir durum uydurmak yanıltıcı olurdu.
       const marker = L.marker([d.latitude, d.longitude], {
-        icon: d.status === "WORKING" ? greenPinIcon : redPinIcon,
+        icon: deviceSymbolIcon(d.assetType, d.status),
         draggable: isManager,
         deviceStatus: d.status,
       });
@@ -206,6 +207,13 @@ const DeviceMap = forwardRef(function DeviceMap(
           ? `<strong style="color:#1f8a55;">Çalışıyor</strong>`
           : `<strong style="color:#c1352a;">Arızalı</strong>`;
 
+      // Arıza SLA rozeti: sadece arızalıyken, mevcut statusChangedAt'tan hesaplanır
+      // (yeni bir backend alanı/endpoint'i eklenmedi).
+      const faultAge = d.status === "FAULTY" ? durationSince(d.statusChangedAt) : null;
+      const faultAgeHtml = faultAge
+        ? `<p><strong>Açık Süresi:</strong> <span style="color:#c1352a; font-weight:600;">${faultAge} açık</span></p>`
+        : "";
+
       const popupEl = document.createElement("div");
       popupEl.innerHTML = `
         <h4>${deviceDisplayName(d)}</h4>
@@ -213,6 +221,7 @@ const DeviceMap = forwardRef(function DeviceMap(
         <p><strong>Bölge:</strong> ${d.region?.regionName ?? ""} (${d.region?.districtName ?? ""})</p>
         <p><strong>Durum:</strong> ${statusHtml}</p>
         <p><strong>Son Çalışma/Güncelleme:</strong> ${formatDateTime(d.statusChangedAt)}</p>
+        ${faultAgeHtml}
       `;
 
       if (d.status === "FAULTY" && onViewFaultReport) {

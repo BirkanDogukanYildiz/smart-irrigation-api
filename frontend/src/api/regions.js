@@ -5,7 +5,25 @@ export function listRegions() {
   return apiCall("/api/region/list");
 }
 
-// POST /api/region/save (regionNo backend tarafından otomatik atanır, göndermeye gerek yok)
+// GET /api/region/{id} -> RegionResponseDto
+// /bolgeler/:id detay sayfası için.
+export function getRegion(id) {
+  return apiCall(`/api/region/${id}`);
+}
+
+// GET /api/region/districts -> NamedOptionDto[] { no, name }
+// Bölge formunda "var olan ilçeyi seç" dropdown'ı için.
+export function listDistricts() {
+  return apiCall("/api/region/districts");
+}
+
+// GET /api/region/park-alanlari -> NamedOptionDto[] { no, name }
+export function listParkAlanlari() {
+  return apiCall("/api/region/park-alanlari");
+}
+
+// POST /api/region/save (regionNo, districtNo, irrigationAreaNo backend tarafından
+// otomatik atanır — payload sadece isim gönderir, numara elle girilmez)
 export function createRegion(payload) {
   return apiCall("/api/region/save", {
     method: "POST",

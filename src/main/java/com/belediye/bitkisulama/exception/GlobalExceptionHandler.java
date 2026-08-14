@@ -61,4 +61,11 @@ public class GlobalExceptionHandler {
         log.warn("Bölge silme engellendi: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
+
+    // Login rate limiter tarafından fırlatılır — brute-force koruması
+    @ExceptionHandler(TooManyLoginAttemptsException.class)
+    public ResponseEntity<String> handleTooManyLoginAttempts(TooManyLoginAttemptsException ex) {
+        log.warn("Rate limit aşıldı: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ex.getMessage());
+    }
 }

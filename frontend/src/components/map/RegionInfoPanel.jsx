@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { zoneColorForRegion } from "../../utils/zoneColors";
 
 // Haritadaki bir zone'a (bölge sınırına) tıklanınca açılan bilgi paneli.
@@ -52,6 +53,19 @@ export default function RegionInfoPanel({ region, devices, onClose, onFlyTo }) {
         Not: Sistem şu an sulamayı otomatik tetiklemediği/izlemediği için "son sulama zamanı" bu panelde
         gösterilmiyor — bu veri henüz backend'de tutulmuyor.
       </p>
+
+      <Link
+        to={`/bolgeler/${region.id}`}
+        style={{
+          display: "inline-block",
+          marginTop: "var(--space-2)",
+          color: "var(--color-primary)",
+          fontSize: 12.5,
+          fontWeight: 600,
+        }}
+      >
+        Bölgenin tam detay sayfasını gör →
+      </Link>
 
       {region.boundary == null && (
         <button

@@ -5,6 +5,25 @@ export function listDevices() {
   return apiCall("/api/devices/list");
 }
 
+// GET /api/devices/search?page=&size=&status=&assetType=&regionId=&q=&sortBy=&sortDir=
+// -> PageResponseDto<SprinklerInfoResponseDto>
+export function searchDevices({ page = 0, size = 20, status, assetType, regionId, q, sortBy, sortDir } = {}) {
+  const params = new URLSearchParams({ page, size });
+  if (status) params.set("status", status);
+  if (assetType) params.set("assetType", assetType);
+  if (regionId) params.set("regionId", regionId);
+  if (q) params.set("q", q);
+  if (sortBy) params.set("sortBy", sortBy);
+  if (sortDir) params.set("sortDir", sortDir);
+  return apiCall(`/api/devices/search?${params.toString()}`);
+}
+
+// GET /api/devices/device-info/{id} -> SprinklerInfoResponseDto
+// /cihazlar/:id detay sayfası için.
+export function getDevice(id) {
+  return apiCall(`/api/devices/device-info/${id}`);
+}
+
 // POST /api/devices/save { regionId, deviceNo, assetType?, latitude?, longitude? }
 export function createDevice(payload) {
   return apiCall("/api/devices/save", {

@@ -64,6 +64,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
                         .requestMatchers("/api/logs/**").hasAnyRole("ADMIN", "HEADGARDENER")
 
+                        // Raporlama/export: logs.csv aynı loglar kısıtına tabi (ADMIN+HEADGARDENER),
+                        // diğer export'lar (bölge/cihaz/arıza/dashboard) kendi kaynaklarıyla aynı
+                        // kısıta tabi (ADMIN+GARDENER+HEADGARDENER). Sıra önemli: spesifik kural
+                        // (logs.csv) genel "/api/export/**" kuralından ÖNCE gelmeli.
+                        .requestMatchers(HttpMethod.GET, "/api/export/logs.csv").hasAnyRole("ADMIN", "HEADGARDENER")
+                        .requestMatchers(HttpMethod.GET, "/api/export/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
+
                         // --- React (Vite build) statik dosyaları ---
                         .requestMatchers(
                                 "/", "/index.html", "/favicon.ico",
@@ -73,7 +80,7 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // React Router (client-side routing) sayfaları
-                        .requestMatchers("/giris", "/harita", "/cihazlar", "/bolgeler", "/kullanicilar", "/loglar", "/seffaflik")
+                        .requestMatchers("/giris", "/harita", "/cihazlar/**", "/bolgeler/**", "/kullanicilar", "/loglar", "/seffaflik")
                         .permitAll()
 
                         // Kullanıcı yönetimi sadece ADMIN
@@ -88,6 +95,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/devices/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
                         // Status güncelleme (arızalı/çalışıyor işaretleme): ADMIN + GARDENER
                         .requestMatchers(HttpMethod.PUT, "/api/devices/status/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
+
+                        // Bakım kayıtları: ekleme + görüntüleme, cihaz durumu güncellemeyle aynı
+                        // rol seti (sahadaki bahçivanın günlük operasyonel işi).
+                        .requestMatchers("/api/maintenance/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
                         // Cihaz ekleme/silme/tam güncelleme: sadece ADMIN
                         .requestMatchers("/api/devices/**").hasAnyRole("ADMIN", "HEADGARDENER")
 

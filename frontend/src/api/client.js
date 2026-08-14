@@ -69,3 +69,38 @@ export async function apiCall(path, options = {}) {
   }
   return data;
 }
+
+/**
+ * Kimlik doğrulamalı dosya indirme (CSV export vb.). Düz bir <a href="..."> linki
+ * kullanılamıyor çünkü JWT localStorage'da tutuluyor, tarayıcı bunu otomatik
+ * Authorization header'ı olarak göndermiyor — bu yüzden fetch + blob + geçici <a>
+ * tıklama tekniği kullanılıyor.
+ */
+export async function apiDownload(path, filename) {
+  const token = getToken();
+  const headers = {};
+  if (token) headers["Authorization"] = "Bearer " + token;
+
+  const res = await fetch(API_BASE + path, { headers });
+
+  if (res.status === 401) {
+    clearSession();
+    const err = new Error("Oturum sona erdi, tekrar giriş yap.");
+    err.status = 401;
+    throw err;
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Dosya indirilemedi.");
+  }
+
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}

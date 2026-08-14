@@ -26,6 +26,7 @@ public class SprinklerInfoService {
     private final SprinklerInfoRepository sprinklerInfoRepository;
     private final RegionService regionService;
     private final AuditLogService auditLogService;
+    private final NotificationService notificationService;
 
     // ---- YARDIMCI (private) METODLAR ----
 
@@ -223,6 +224,10 @@ public class SprinklerInfoService {
         if (oldStatus != Status.FAULTY && newStatus == Status.FAULTY) {
             action = AuditActions.ARIZA_OLUSTURULDU;
             detay = deviceLabel(device) + " için arıza bildirildi. Sebep: " + description;
+            // Bildirim sistemi: ADMIN'ler + bölgenin baş bahçivanına bildirim oluşturulur.
+            // Sadece GERÇEKTEN yeni bir arıza oluştuğunda (WORKING->FAULTY) tetiklenir —
+            // arıza güncellemesi/kapatılması bildirim spam'ine yol açmasın diye burada tutuldu.
+            notificationService.notifyFaultCreated(device, getCurrentUsername());
         } else if (oldStatus == Status.FAULTY && newStatus == Status.FAULTY) {
             action = AuditActions.ARIZA_GUNCELLENDI;
             detay = deviceLabel(device) + " için arıza bilgisi güncellendi.";
@@ -242,9 +247,22 @@ public class SprinklerInfoService {
         return toDto(saved);
     }
 
+    // /cihazlar/:id detay sayfası (paylaşılabilir) buradan besleniyor. Görünürlük kontrolü
+    // BİLİNÇLİ OLARAK eklendi: bu endpoint önceden frontend tarafından hiç çağrılmıyordu,
+    // şimdi doğrudan URL üzerinden erişilebilir bir sayfaya bağlandığı için, sistemin geri
+    // kalanında zaten uygulanan bölge görünürlüğü kuralına (aksi halde bir kullanıcı ID'sini
+    // tahmin ederek kendi kapsamı dışındaki bir cihazın detayını görebilirdi) burada da uyuluyor.
     public SprinklerInfoResponseDto deviceInfo(Long id) {
         SprinklerInfo entity = sprinklerInfoRepository.findById(id)
                 .orElseThrow(() -> new DeviceNotFoundException(id));
+
+        java.util.Set<Long> gorunurBolgeIdleri = regionService.getVisibleRegionEntities().stream()
+                .map(Region::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!gorunurBolgeIdleri.contains(entity.getRegion().getId())) {
+            throw new DeviceNotFoundException(id);
+        }
+
         return toDto(entity);
     }
 
@@ -270,5 +288,52 @@ public class SprinklerInfoService {
         );
 
         return toDto(saved);
+    }
+
+    // ---- Server-side sayfalama/filtreleme/arama (Cihazlar + "Arızalar" görünümü) ----
+    // "Arızalar" ayrı bir kaynak değil (sistemde ayrı bir Arıza entity'si yok, arıza =
+    // status FAULTY olan cihaz) — bu yüzden ayrı bir endpoint AÇILMADI, aynı arama
+    // uç noktası status=FAULTY parametresiyle çağrılarak kullanılıyor (kod tekrarını önler).
+    @Transactional(readOnly = true)
+    public com.belediye.bitkisulama.dto.PageResponseDto<SprinklerInfoResponseDto> searchDevices(
+            int page, int size, Status status, AssetType assetType, Long regionId, String query,
+            String sortBy, String sortDir
+    ) {
+        java.util.Set<Long> gorunurBolgeIdleri = regionService.getVisibleRegionEntities().stream()
+                .map(Region::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        List<SprinklerInfo> visible = gorunurBolgeIdleri.isEmpty()
+                ? List.of()
+                : sprinklerInfoRepository.findByRegionIdIn(gorunurBolgeIdleri);
+
+        java.util.stream.Stream<SprinklerInfo> stream = visible.stream();
+        if (status != null) stream = stream.filter(d -> d.getStatus() == status);
+        if (assetType != null) stream = stream.filter(d -> d.getAssetType() == assetType);
+        if (regionId != null) stream = stream.filter(d -> d.getRegion().getId().equals(regionId));
+        if (query != null && !query.isBlank()) {
+            String q = query.toLowerCase();
+            stream = stream.filter(d ->
+                    String.valueOf(d.getDeviceNo()).contains(q)
+                            || d.getRegion().getRegionName().toLowerCase().contains(q)
+                            || d.getRegion().getDistrictName().toLowerCase().contains(q)
+                            || (d.getDescription() != null && d.getDescription().toLowerCase().contains(q))
+                            || (d.getFaultType() != null && d.getFaultType().toLowerCase().contains(q))
+            );
+        }
+
+        List<SprinklerInfo> filtered = new java.util.ArrayList<>(stream.toList());
+
+        java.util.Comparator<SprinklerInfo> cmp = switch (sortBy == null ? "" : sortBy) {
+            case "status" -> java.util.Comparator.comparing(d -> d.getStatus().name());
+            case "region" -> java.util.Comparator.comparing(d -> d.getRegion().getRegionName());
+            case "createdAt" -> java.util.Comparator.comparing(
+                    SprinklerInfo::getCreatedAt, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()));
+            default -> java.util.Comparator.comparing(SprinklerInfo::getDeviceNo);
+        };
+        if ("desc".equalsIgnoreCase(sortDir)) cmp = cmp.reversed();
+        filtered.sort(cmp);
+
+        List<SprinklerInfoResponseDto> dtos = filtered.stream().map(this::toDto).toList();
+        return PageUtil.paginate(dtos, page, size);
     }
 }

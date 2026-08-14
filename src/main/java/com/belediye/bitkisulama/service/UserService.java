@@ -168,4 +168,24 @@ public class UserService {
 
         return deletedUserDto;
     }
+
+    // Server-side sayfalama/filtreleme/arama.
+    @Transactional(readOnly = true)
+    public com.belediye.bitkisulama.dto.PageResponseDto<UserResponseDto> searchUsers(int page, int size, Role role, String query) {
+        List<User> all = userRepository.findAll();
+
+        java.util.stream.Stream<User> stream = all.stream();
+        if (role != null) stream = stream.filter(u -> u.getRole() == role);
+        if (query != null && !query.isBlank()) {
+            String q = query.toLowerCase();
+            stream = stream.filter(u -> u.getUsername().toLowerCase().contains(q));
+        }
+
+        List<UserResponseDto> dtos = stream
+                .sorted(java.util.Comparator.comparing(User::getUsername))
+                .map(this::toDto)
+                .toList();
+
+        return PageUtil.paginate(dtos, page, size);
+    }
 }

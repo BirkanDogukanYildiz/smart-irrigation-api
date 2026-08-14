@@ -1,5 +1,6 @@
 import { deviceDisplayName } from "../../utils/deviceDisplay";
 import { formatDateTime } from "../../utils/format";
+import { durationSince } from "../../utils/durationSince";
 import Button from "../common/Button";
 
 // "Arıza Raporunu Görüntüle" butonuna basılınca açılan, öne çıkan (modal) rapor görünümü.
@@ -67,6 +68,11 @@ export default function FaultReportModal({ device, onClose }) {
           <ReportRow label="Cihaz ID" value={`#${device.id}`} />
           <ReportRow label="Bölge" value={`${device.region?.regionName ?? "—"} (${device.region?.districtName ?? "—"})`} />
           <ReportRow label="Durum" value="Arızalı" valueColor="var(--color-danger)" />
+          <ReportRow
+            label="Açık Süresi"
+            value={`${durationSince(device.statusChangedAt) || "—"} açık`}
+            valueColor="var(--color-danger)"
+          />
           <ReportRow label="Oluşturulma Tarihi" value={formatDateTime(device.createdAt)} />
           <ReportRow label="Son Güncelleme" value={formatDateTime(device.statusChangedAt)} />
           <ReportRow label="İlgili Personel" value={device.lastUpdatedBy || "Kayıtlı değil"} last />

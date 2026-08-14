@@ -1,15 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Section from "../common/Section";
 import Alert from "../common/Alert";
 import Button from "../common/Button";
-import { createRegion } from "../../api/regions";
+import PickOrCreateField from "./PickOrCreateField";
+import { createRegion, listDistricts, listParkAlanlari } from "../../api/regions";
 import "../../styles/form.css";
 
 const emptyForm = {
-  districtNo: "",
   districtName: "",
   regionName: "",
-  irrigationAreaNo: "",
   irrigationAreaName: "",
   description: "",
   headGardenerId: "",
@@ -17,9 +16,28 @@ const emptyForm = {
 
 export default function RegionForm({ headGardeners, onCreated }) {
   const [form, setForm] = useState(emptyForm);
+  const [districts, setDistricts] = useState([]);
+  const [parkAlanlari, setParkAlanlari] = useState([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  async function loadOptions() {
+    try {
+      setDistricts(await listDistricts());
+    } catch {
+      // Liste yüklenemezse "yeni ekle" akışıyla yine de bölge oluşturulabilir.
+    }
+    try {
+      setParkAlanlari(await listParkAlanlari());
+    } catch {
+      // Aynı şekilde park alanı listesi de opsiyonel.
+    }
+  }
+
+  useEffect(() => {
+    loadOptions();
+  }, []);
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -29,19 +47,28 @@ export default function RegionForm({ headGardeners, onCreated }) {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    if (!form.districtName.trim()) {
+      setError("İlçe seçmelisin ya da yeni bir ilçe adı girmelisin.");
+      return;
+    }
+    if (!form.irrigationAreaName.trim()) {
+      setError("Park alanı seçmelisin ya da yeni bir park alanı adı girmelisin.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       await createRegion({
-        districtNo: Number(form.districtNo),
         districtName: form.districtName,
         regionName: form.regionName,
-        irrigationAreaNo: Number(form.irrigationAreaNo),
         irrigationAreaName: form.irrigationAreaName,
         description: form.description || null,
         headGardenerId: form.headGardenerId ? Number(form.headGardenerId) : null,
       });
       setSuccess("Bölge başarıyla eklendi.");
       setForm(emptyForm);
+      loadOptions();
       onCreated?.();
     } catch (err) {
       setError(err.message);
@@ -51,32 +78,30 @@ export default function RegionForm({ headGardeners, onCreated }) {
   }
 
   return (
-    <Section title="Yeni Bölge Ekle" subtitle="Bölge numarası sistem tarafından otomatik atanır, girmene gerek yok.">
+    <Section title="Yeni Bölge Ekle" subtitle="Bölge, ilçe ve park alanı numaraları sistem tarafından otomatik atanır — elle girmene gerek yok.">
       <form onSubmit={handleSubmit}>
         <Alert type="error">{error}</Alert>
         <Alert type="success">{success}</Alert>
 
         <div className="form-grid">
-          <div className="form-field">
-            <label htmlFor="rDistrictNo">İlçe No</label>
-            <input id="rDistrictNo" type="number" value={form.districtNo} onChange={(e) => update("districtNo", e.target.value)} />
-          </div>
-          <div className="form-field">
-            <label htmlFor="rDistrictName">İlçe Adı</label>
-            <input id="rDistrictName" type="text" value={form.districtName} onChange={(e) => update("districtName", e.target.value)} />
-          </div>
+          <PickOrCreateField
+            id="rDistrictName"
+            label="İlçe"
+            options={districts}
+            value={form.districtName}
+            onChange={(v) => update("districtName", v)}
+          />
           <div className="form-field">
             <label htmlFor="rRegionName">Bölge Adı</label>
             <input id="rRegionName" type="text" value={form.regionName} onChange={(e) => update("regionName", e.target.value)} />
           </div>
-          <div className="form-field">
-            <label htmlFor="rIrrigationAreaNo">Sulama Alanı No</label>
-            <input id="rIrrigationAreaNo" type="number" value={form.irrigationAreaNo} onChange={(e) => update("irrigationAreaNo", e.target.value)} />
-          </div>
-          <div className="form-field">
-            <label htmlFor="rIrrigationAreaName">Sulama Alanı Adı</label>
-            <input id="rIrrigationAreaName" type="text" value={form.irrigationAreaName} onChange={(e) => update("irrigationAreaName", e.target.value)} />
-          </div>
+          <PickOrCreateField
+            id="rIrrigationAreaName"
+            label="Park Alanı"
+            options={parkAlanlari}
+            value={form.irrigationAreaName}
+            onChange={(v) => update("irrigationAreaName", v)}
+          />
           <div className="form-field">
             <label htmlFor="rHeadGardener">Baş Bahçivan (opsiyonel)</label>
             <select id="rHeadGardener" value={form.headGardenerId} onChange={(e) => update("headGardenerId", e.target.value)}>

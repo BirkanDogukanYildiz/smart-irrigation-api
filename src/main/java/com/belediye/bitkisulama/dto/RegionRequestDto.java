@@ -1,8 +1,6 @@
 package com.belediye.bitkisulama.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.*;
 
 @Getter
@@ -11,10 +9,9 @@ import lombok.*;
 @AllArgsConstructor
 public class RegionRequestDto {
 
-    @NotNull(message = "İlçe numarası null olamaz!")
-    @Positive(message = "İlçe numarası pozitif olmalı!")
-    private Integer districtNo;
-
+    // İlçe numarası artık ELLE girilmiyor: var olan bir ilçe seçilirse o ilçenin
+    // numarası yeniden kullanılır, yeni bir ilçe adı girilirse sistem otomatik
+    // numara atar (bkz. RegionService.resolveDistrictNo).
     @NotBlank(message = "İlçe adı boş olamaz!")
     private String districtName;
 
@@ -23,11 +20,8 @@ public class RegionRequestDto {
     @NotBlank(message = "Bölge adı boş olamaz!")
     private String regionName;
 
-    @NotNull(message = "Sulama alanı numarası null olamaz!")
-    @Positive(message = "Sulama alanı numarası pozitif olmalı!")
-    private Integer irrigationAreaNo;
-
-    @NotBlank(message = "Sulama alanı adı boş olamaz!")
+    // Park alanı numarası da aynı şekilde ELLE girilmiyor (bkz. RegionService.resolveParkAlaniNo).
+    @NotBlank(message = "Park alanı adı boş olamaz!")
     private String irrigationAreaName;
 
     private String description;

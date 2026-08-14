@@ -1,5 +1,6 @@
 import IBBLogo from "../common/IBBLogo";
 import ThemeToggle from "../common/ThemeToggle";
+import NotificationBell from "./NotificationBell";
 import { useAuth } from "../../context/AuthContext";
 import "../../styles/layout.css";
 
@@ -19,6 +20,7 @@ export default function Header() {
         </div>
 
         <div className="app-user">
+          <NotificationBell />
           <ThemeToggle />
           <div className="app-user-avatar">{initial}</div>
           <span className="app-user-name">{username}</span>

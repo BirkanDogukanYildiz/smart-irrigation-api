@@ -1,19 +1,31 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Section from "../components/common/Section";
 import Alert from "../components/common/Alert";
 import Button from "../components/common/Button";
+import PaginationControls from "../components/common/PaginationControls";
 import DeviceMap from "../components/map/DeviceMap";
-import FaultReportModal from "../components/map/FaultReportModal";
 import RegionInfoPanel from "../components/map/RegionInfoPanel";
-import { listDevices, createDevice, deleteDevice, updateDeviceLocation } from "../api/devices";
+import DeviceForm from "../components/devices/DeviceForm";
+import DeviceTable from "../components/devices/DeviceTable";
+import { listDevices, searchDevices, createDevice, updateDeviceStatus, deleteDevice, updateDeviceLocation } from "../api/devices";
 import { listRegions, updateRegionBoundary } from "../api/regions";
+import { exportDevicesCsv, exportFaultsCsv } from "../api/export";
 import { useAuth } from "../context/AuthContext";
 import { isManager, isAdmin } from "../utils/roles";
 import { zoneColorForRegion } from "../utils/zoneColors";
+import { ASSET_TYPES, assetTypeLabel } from "../utils/assetTypes";
 import "../styles/map.css";
 
+const PAGE_SIZE = 20;
+
+// Harita ve Cihazlar sekmeleri BİRLEŞTİRİLDİ: hem görsel harita hem de arama/
+// sayfalamalı cihaz listesi/yönetimi artık aynı sayfada. Yetkilendirme aynen
+// korunuyor: harita herkese açık, cihaz yönetimi (form, silme, dışa aktarma)
+// hâlâ sadece isManager (ADMIN+HEADGARDENER) rolüne görünür.
 export default function MapPage() {
   const { role } = useAuth();
+  const navigate = useNavigate();
   const manager = isManager(role);
   const admin = isAdmin(role);
   const mapApiRef = useRef(null);
@@ -25,12 +37,29 @@ export default function MapPage() {
 
   const [showZones, setShowZones] = useState(true);
   const [selectedRegionId, setSelectedRegionId] = useState(null);
-  const [faultReportDevice, setFaultReportDevice] = useState(null);
 
   // Zone çizim modu: null iken kapalı, bir bölge id'si iken o bölge için çiziliyor demektir.
   const [drawingRegionId, setDrawingRegionId] = useState(null);
   const [drawPoints, setDrawPoints] = useState([]);
   const [savingBoundary, setSavingBoundary] = useState(false);
+
+  // Haritaya tıklayarak hızlı ekipman ekleme: artık window.prompt ile numara YAZDIRMIYORUZ,
+  // bölge gerçek bir <select> içinde alt alta listeleniyor, oradan seçiliyor.
+  const [pendingLocation, setPendingLocation] = useState(null); // {lat, lng} | null
+  const [quickAddRegionId, setQuickAddRegionId] = useState("");
+  const [quickAddDeviceNo, setQuickAddDeviceNo] = useState("");
+  const [quickAddAssetType, setQuickAddAssetType] = useState(ASSET_TYPES.SULAMA_CIHAZI);
+  const [quickAddSubmitting, setQuickAddSubmitting] = useState(false);
+
+  // ---- Alt bölüm: cihaz yönetimi (server-side arama/filtre/sayfalama) — sadece manager ----
+  const [managedDevices, setManagedDevices] = useState(null);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(0);
+  const [typeFilter, setTypeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [regionFilter, setRegionFilter] = useState("");
+  const [search, setSearch] = useState("");
 
   async function loadDevices() {
     try {
@@ -44,19 +73,49 @@ export default function MapPage() {
     try {
       setRegions(await listRegions());
     } catch {
-      // Bölgeler yüklenemezse "Bölgeler" navigasyon barı ve zone katmanı boş kalır,
-      // harita cihazlarla birlikte yine de kullanılabilir.
+      // Bölgeler yüklenemezse "Bölgeye Git" ve zone katmanı boş kalır, harita yine kullanılabilir.
+    }
+  }
+
+  async function loadManagedDevices() {
+    if (!manager) return;
+    try {
+      const result = await searchDevices({
+        page,
+        size: PAGE_SIZE,
+        status: statusFilter || undefined,
+        assetType: typeFilter || undefined,
+        regionId: regionFilter || undefined,
+        q: search || undefined,
+      });
+      setManagedDevices(result.content);
+      setTotalPages(result.totalPages);
+      setTotalElements(result.totalElements);
+    } catch (e) {
+      setError(e.message);
     }
   }
 
   useEffect(() => {
     loadDevices();
-    // Not: bölgeler artık SADECE manager değil, herkes için yükleniyor —
-    // "Bölgeler" navigasyon barı ve zone katmanı tüm rollerde faydalı.
-    // Görünürlük zaten backend'de role göre filtreleniyor (RegionService.getVisibleRegionEntities).
     loadRegions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    loadManagedDevices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, statusFilter, typeFilter, regionFilter, search, manager]);
+
+  useEffect(() => {
+    setPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, typeFilter, regionFilter, search]);
+
+  function refreshAll() {
+    loadDevices();
+    loadManagedDevices();
+  }
 
   async function handleLocationChange(id, lat, lng) {
     await updateDeviceLocation(id, lat, lng);
@@ -67,33 +126,44 @@ export default function MapPage() {
     if (!window.confirm(`#${device.deviceNo} numaralı ekipmanı sistemden ÇIKARMAK istediğine emin misin?`)) return;
     try {
       await deleteDevice(device.id);
-      loadDevices();
+      refreshAll();
     } catch (e) {
       window.alert("Ekipman çıkarılamadı: " + e.message);
     }
   }
 
-  async function handleEmptyClick(lat, lng) {
+  function handleEmptyClick(lat, lng) {
     if (!manager) return;
-    if (regions.length === 0) {
-      window.alert("Sistemde hiç bölge yok! Önce Bölgeler sayfasından bölge ekleyin.");
+    setPendingLocation({ lat, lng });
+    setQuickAddRegionId("");
+    setQuickAddDeviceNo("");
+    setQuickAddAssetType(ASSET_TYPES.SULAMA_CIHAZI);
+  }
+
+  async function submitQuickAdd() {
+    if (!quickAddRegionId) {
+      window.alert("Lütfen bir bölge seçin.");
       return;
     }
-    const regionLabel = regions.map((r, i) => `${i + 1}) ${r.regionName} (${r.districtName})`).join("\n");
-    const choice = window.prompt(`Yeni ekipmanı hangi bölgeye eklemek istersiniz?\n\n${regionLabel}\n\nNumara girin:`);
-    if (!choice) return;
-    const region = regions[Number(choice) - 1];
-    if (!region) {
-      window.alert("Geçersiz seçim.");
+    if (!quickAddDeviceNo) {
+      window.alert("Lütfen ekipman numarasını girin.");
       return;
     }
-    const deviceNo = window.prompt("Ekipman numarasını girin:");
-    if (!deviceNo) return;
+    setQuickAddSubmitting(true);
     try {
-      await createDevice({ regionId: region.id, deviceNo: Number(deviceNo), latitude: lat, longitude: lng });
-      loadDevices();
+      await createDevice({
+        regionId: Number(quickAddRegionId),
+        deviceNo: Number(quickAddDeviceNo),
+        assetType: quickAddAssetType,
+        latitude: pendingLocation.lat,
+        longitude: pendingLocation.lng,
+      });
+      setPendingLocation(null);
+      refreshAll();
     } catch (e) {
       window.alert("Ekipman eklenemedi: " + e.message);
+    } finally {
+      setQuickAddSubmitting(false);
     }
   }
 
@@ -112,6 +182,7 @@ export default function MapPage() {
     setDrawingRegionId(region.id);
     setDrawPoints([]);
     setSelectedRegionId(null);
+    setPendingLocation(null);
   }
 
   function cancelDrawing() {
@@ -152,162 +223,282 @@ export default function MapPage() {
     }
   }
 
+  async function toggleStatus(device) {
+    if (device.status === "WORKING") {
+      const sebep = window.prompt("Arıza açıklamasını gir:");
+      if (sebep === null) return;
+      if (!sebep.trim()) {
+        window.alert("Arıza açıklaması boş olamaz.");
+        return;
+      }
+      const faultType = window.prompt("Arıza türünü gir (opsiyonel):");
+      try {
+        await updateDeviceStatus(device.id, "FAULTY", sebep.trim(), faultType?.trim() || null);
+        refreshAll();
+      } catch (e) {
+        window.alert("Durum güncellenemedi: " + e.message);
+      }
+    } else {
+      if (!window.confirm("Ekipmanın onarıldığını onaylıyor musun?")) return;
+      try {
+        await updateDeviceStatus(device.id, "WORKING");
+        refreshAll();
+      } catch (e) {
+        window.alert("Durum güncellenemedi: " + e.message);
+      }
+    }
+  }
+
+  async function handleExport(fn) {
+    try {
+      await fn();
+    } catch (e) {
+      window.alert("İndirme başarısız: " + e.message);
+    }
+  }
+
   const drawingRegion = regions.find((r) => r.id === drawingRegionId) || null;
   const selectedRegion = regions.find((r) => r.id === selectedRegionId) || null;
 
   return (
-    <Section
-      title="İnteraktif Harita"
-      subtitle={
-        manager
-          ? "Yeni ekipman eklemek için haritada boş bir yere tıklayın. Bölge sınırlarına (zone) tıklayarak o bölgeyi inceleyebilirsiniz."
-          : "Ekipmanların anlık lokasyonlarını ve durumlarını inceleyebilirsiniz. Bölge sınırlarına tıklayarak o bölgeyi inceleyebilirsiniz."
-      }
-    >
-      <Alert type="error">{error}</Alert>
+    <>
+      <Section
+        title="İnteraktif Harita"
+        subtitle={
+          manager
+            ? "Yeni ekipman eklemek için haritada boş bir yere tıklayın. Bölge sınırlarına (zone) tıklayarak o bölgeyi inceleyebilirsiniz."
+            : "Ekipmanların anlık lokasyonlarını ve durumlarını inceleyebilirsiniz. Bölge sınırlarına tıklayarak o bölgeyi inceleyebilirsiniz."
+        }
+      >
+        <Alert type="error">{error}</Alert>
 
-      <RegionInfoPanel
-        region={selectedRegion}
-        devices={devices}
-        onClose={() => setSelectedRegionId(null)}
-        onFlyTo={flyToRegion}
-      />
+        <RegionInfoPanel
+          region={selectedRegion}
+          devices={devices}
+          onClose={() => setSelectedRegionId(null)}
+          onFlyTo={flyToRegion}
+        />
 
-      {/* --- Bölgeler navigasyon barı: bir bölgeye tıklayınca harita o zone'a odaklanır --- */}
-      {regions.length > 0 && (
-        <div className="map-toolbar" style={{ marginBottom: "var(--space-2)" }}>
-          {regions.map((r) => (
-            <button
-              key={r.id}
-              className={"map-filter-btn" + (selectedRegionId === r.id ? " is-active" : "")}
-              onClick={() => handleZoneClick(r)}
-              title={`${r.regionName} bölgesine git`}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-            >
-              <span
-                style={{
-                  width: 9,
-                  height: 9,
-                  borderRadius: "50%",
-                  background: zoneColorForRegion(r.id),
-                  display: "inline-block",
+        {/* --- Bölgeye git: tek tıkla/tek seçimle harita o zone'a odaklanır. --- */}
+        {regions.length > 0 && (
+          <div className="map-toolbar" style={{ marginBottom: "var(--space-2)" }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--color-text-muted)" }}>
+              Bölgeye Git:
+              <select
+                value={selectedRegionId ?? ""}
+                onChange={(e) => {
+                  const region = regions.find((r) => String(r.id) === e.target.value);
+                  if (region) handleZoneClick(region);
                 }}
-              />
-              {r.regionName}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="map-toolbar">
-        <button
-          className={"map-filter-btn" + (filter === "ALL" ? " is-active" : "")}
-          onClick={() => setFilter("ALL")}
-        >
-          Tüm Ekipmanlar
-        </button>
-        <button
-          className={"map-filter-btn" + (filter === "WORKING" ? " is-active" : "")}
-          onClick={() => setFilter("WORKING")}
-        >
-          Sadece Çalışanlar
-        </button>
-        <button
-          className={"map-filter-btn" + (filter === "FAULTY" ? " is-active" : "")}
-          onClick={() => setFilter("FAULTY")}
-        >
-          Sadece Arızalılar
-        </button>
-
-        {regions.some((r) => r.boundary) && (
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, marginLeft: "auto" }}>
-            <input type="checkbox" checked={showZones} onChange={(e) => setShowZones(e.target.checked)} />
-            Bölge sınırlarını göster
-          </label>
-        )}
-      </div>
-
-      {/* --- Admin: zone çizim kontrolleri --- */}
-      {admin && (
-        <div className="map-toolbar" style={{ flexWrap: "wrap" }}>
-          {drawingRegionId == null ? (
-            <>
-              <span className="hint" style={{ marginRight: 4 }}>
-                Bölge sınırı çiz/düzenle:
-              </span>
-              {regions.map((r) => (
-                <button key={r.id} className="map-filter-btn" onClick={() => startDrawing(r)}>
-                  {r.boundary ? "Düzenle: " : "Çiz: "}
-                  {r.regionName}
-                </button>
-              ))}
-              {regions.filter((r) => r.boundary).length > 0 && (
-                <select
-                  defaultValue=""
-                  onChange={(e) => {
-                    const region = regions.find((r) => String(r.id) === e.target.value);
-                    if (region) clearZone(region);
-                    e.target.value = "";
-                  }}
-                >
-                  <option value="" disabled>
-                    Sınır kaldır...
+                style={{ minWidth: 200 }}
+              >
+                <option value="">— Bölge seçin —</option>
+                {regions.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.regionName} ({r.districtName})
                   </option>
-                  {regions
-                    .filter((r) => r.boundary)
-                    .map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.regionName}
-                      </option>
-                    ))}
-                </select>
-              )}
-            </>
-          ) : (
-            <>
-              <span style={{ fontSize: 12.5, fontWeight: 600 }}>
-                "{drawingRegion?.regionName}" için sınır çiziliyor — haritaya tıklayarak nokta ekleyin (
-                {drawPoints.length} nokta, en az 3 gerekli).
-              </span>
-              <Button size="sm" variant="secondary" onClick={undoLastPoint} disabled={drawPoints.length === 0}>
-                Son Noktayı Geri Al
-              </Button>
-              <Button size="sm" variant="primary" onClick={saveDrawing} disabled={savingBoundary || drawPoints.length < 3}>
-                {savingBoundary ? "Kaydediliyor..." : "Kaydet"}
-              </Button>
-              <Button size="sm" variant="secondary" onClick={cancelDrawing}>
-                İptal
-              </Button>
-            </>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+
+        <div className="map-toolbar">
+          <button className={"map-filter-btn" + (filter === "ALL" ? " is-active" : "")} onClick={() => setFilter("ALL")}>
+            Tüm Ekipmanlar
+          </button>
+          <button className={"map-filter-btn" + (filter === "WORKING" ? " is-active" : "")} onClick={() => setFilter("WORKING")}>
+            Sadece Çalışanlar
+          </button>
+          <button className={"map-filter-btn" + (filter === "FAULTY" ? " is-active" : "")} onClick={() => setFilter("FAULTY")}>
+            Sadece Arızalılar
+          </button>
+
+          {regions.some((r) => r.boundary) && (
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, marginLeft: "auto" }}>
+              <input type="checkbox" checked={showZones} onChange={(e) => setShowZones(e.target.checked)} />
+              Bölge sınırlarını göster
+            </label>
           )}
         </div>
+
+        {/* --- Admin: zone çizim kontrolleri --- */}
+        {admin && (
+          <div className="map-toolbar" style={{ flexWrap: "wrap" }}>
+            {drawingRegionId == null ? (
+              <>
+                <span className="hint" style={{ marginRight: 4 }}>
+                  Bölge sınırı çiz/düzenle:
+                </span>
+                {regions.map((r) => (
+                  <button key={r.id} className="map-filter-btn" onClick={() => startDrawing(r)}>
+                    {r.boundary ? "Düzenle: " : "Çiz: "}
+                    {r.regionName}
+                  </button>
+                ))}
+                {regions.filter((r) => r.boundary).length > 0 && (
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      const region = regions.find((r) => String(r.id) === e.target.value);
+                      if (region) clearZone(region);
+                      e.target.value = "";
+                    }}
+                  >
+                    <option value="" disabled>
+                      Sınır kaldır...
+                    </option>
+                    {regions
+                      .filter((r) => r.boundary)
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.regionName}
+                        </option>
+                      ))}
+                  </select>
+                )}
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: 12.5, fontWeight: 600 }}>
+                  "{drawingRegion?.regionName}" için sınır çiziliyor — haritaya tıklayarak nokta ekleyin (
+                  {drawPoints.length} nokta, en az 3 gerekli).
+                </span>
+                <Button size="sm" variant="secondary" onClick={undoLastPoint} disabled={drawPoints.length === 0}>
+                  Son Noktayı Geri Al
+                </Button>
+                <Button size="sm" variant="primary" onClick={saveDrawing} disabled={savingBoundary || drawPoints.length < 3}>
+                  {savingBoundary ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+                <Button size="sm" variant="secondary" onClick={cancelDrawing}>
+                  İptal
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* --- Haritaya tıklayarak hızlı ekipman ekleme: bölge gerçek bir dropdown'dan seçiliyor --- */}
+        {pendingLocation && (
+          <div
+            className="map-toolbar"
+            style={{ flexWrap: "wrap", background: "var(--color-primary-lighter)", padding: "var(--space-3)", borderRadius: "var(--radius-sm)" }}
+          >
+            <span style={{ fontSize: 12.5, fontWeight: 600 }}>Bu konuma yeni ekipman ekle:</span>
+            <select value={quickAddRegionId} onChange={(e) => setQuickAddRegionId(e.target.value)}>
+              <option value="">— Bölge seçin —</option>
+              {regions.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.regionName} ({r.districtName})
+                </option>
+              ))}
+            </select>
+            <select value={quickAddAssetType} onChange={(e) => setQuickAddAssetType(e.target.value)}>
+              {Object.values(ASSET_TYPES).map((t) => (
+                <option key={t} value={t}>
+                  {assetTypeLabel(t)}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              placeholder="Ekipman No"
+              value={quickAddDeviceNo}
+              onChange={(e) => setQuickAddDeviceNo(e.target.value)}
+              style={{ width: 110 }}
+            />
+            <Button size="sm" variant="primary" onClick={submitQuickAdd} disabled={quickAddSubmitting}>
+              {quickAddSubmitting ? "Ekleniyor..." : "Ekle"}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setPendingLocation(null)}>
+              İptal
+            </Button>
+          </div>
+        )}
+
+        <div className="map-legend">
+          <span><span className="dot" style={{ background: "#1f8a55" }} />Çalışıyor</span>
+          <span><span className="dot" style={{ background: "#c1352a" }} />Arızalı</span>
+          <span><span className="dot" style={{ background: "#b5750a" }} />Küme içinde karışık</span>
+        </div>
+
+        <DeviceMap
+          ref={mapApiRef}
+          devices={devices}
+          filter={filter}
+          isManager={manager}
+          onLocationChange={handleLocationChange}
+          onRemove={handleRemove}
+          onEmptyClick={manager ? handleEmptyClick : null}
+          onViewFaultReport={(device) => navigate(`/cihazlar/${device.id}`)}
+          regions={regions}
+          showZones={showZones}
+          selectedRegionId={selectedRegionId}
+          onZoneClick={handleZoneClick}
+          drawingRegionId={drawingRegionId}
+          drawPoints={drawPoints}
+          onDrawPointAdd={(lat, lng) => setDrawPoints((prev) => [...prev, [lat, lng]])}
+        />
+      </Section>
+
+      {/* --- Cihaz yönetimi: form + arama/filtre/sayfalama + dışa aktarma. Harita ile
+          AYNI sayfaya taşındı (eskiden ayrı "Cihazlar" sekmesindeydi). Sadece manager
+          (ADMIN+HEADGARDENER) görür — mevcut yetkilendirme aynen korunuyor. --- */}
+      {manager && (
+        <>
+          <DeviceForm regions={regions} onCreated={refreshAll} />
+
+          <Section
+            title="Kayıtlı Ekipmanlar"
+            actions={
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input
+                  type="text"
+                  placeholder="Ara (no, bölge, açıklama)..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{ minWidth: 160 }}
+                />
+                <select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}>
+                  <option value="">Tüm bölgeler</option>
+                  {regions.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.regionName}
+                    </option>
+                  ))}
+                </select>
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="">Tüm durumlar</option>
+                  <option value="WORKING">Çalışıyor</option>
+                  <option value="FAULTY">Arızalı</option>
+                </select>
+                <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                  <option value="">Tüm türler</option>
+                  {Object.values(ASSET_TYPES).map((t) => (
+                    <option key={t} value={t}>
+                      {assetTypeLabel(t)}
+                    </option>
+                  ))}
+                </select>
+                <Button size="sm" variant="secondary" onClick={() => handleExport(exportDevicesCsv)}>
+                  Ekipmanları İndir (CSV)
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => handleExport(exportFaultsCsv)}>
+                  Arızaları İndir (CSV)
+                </Button>
+              </div>
+            }
+          >
+            {totalElements > 0 && (
+              <p className="hint" style={{ marginBottom: "var(--space-3)" }}>
+                {totalElements} ekipman bulundu.
+              </p>
+            )}
+            <DeviceTable devices={managedDevices} onToggleStatus={toggleStatus} onDelete={handleRemove} canDelete={admin} />
+            <PaginationControls page={page} totalPages={totalPages} totalElements={totalElements} onPageChange={setPage} />
+          </Section>
+        </>
       )}
-
-      <div className="map-legend">
-        <span><span className="dot" style={{ background: "#1f8a55" }} />Çalışıyor</span>
-        <span><span className="dot" style={{ background: "#c1352a" }} />Arızalı</span>
-        <span><span className="dot" style={{ background: "#b5750a" }} />Küme içinde karışık</span>
-      </div>
-
-      <DeviceMap
-        ref={mapApiRef}
-        devices={devices}
-        filter={filter}
-        isManager={manager}
-        onLocationChange={handleLocationChange}
-        onRemove={handleRemove}
-        onEmptyClick={manager ? handleEmptyClick : null}
-        onViewFaultReport={setFaultReportDevice}
-        regions={regions}
-        showZones={showZones}
-        selectedRegionId={selectedRegionId}
-        onZoneClick={handleZoneClick}
-        drawingRegionId={drawingRegionId}
-        drawPoints={drawPoints}
-        onDrawPointAdd={(lat, lng) => setDrawPoints((prev) => [...prev, [lat, lng]])}
-      />
-
-      <FaultReportModal device={faultReportDevice} onClose={() => setFaultReportDevice(null)} />
-    </Section>
+    </>
   );
 }

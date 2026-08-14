@@ -1,6 +1,7 @@
 package com.belediye.bitkisulama.controller;
 
 import com.belediye.bitkisulama.dto.AssignHeadGardenerRequestDto;
+import com.belediye.bitkisulama.dto.NamedOptionDto;
 import com.belediye.bitkisulama.dto.RegionBoundaryRequestDto;
 import com.belediye.bitkisulama.dto.RegionRequestDto;
 import com.belediye.bitkisulama.dto.RegionResponseDto;
@@ -28,6 +29,20 @@ public class RegionController {
     @GetMapping("/list")
     public List<RegionResponseDto> listRegions() {
         return regionService.listRegions();
+    }
+
+    // Bölge formunda "var olanlardan seç ya da yeni ekle" akışı için — kullanıcı ilçe/park
+    // alanı numarasını artık elle girmiyor. Not: Spring, literal path'leri ("/districts")
+    // "/{id}" gibi değişken path'lerden HER ZAMAN daha spesifik kabul edip önceliklendirir,
+    // bu yüzden aşağıdaki iki endpoint "/{id}" ile çakışmaz.
+    @GetMapping("/districts")
+    public List<NamedOptionDto> listDistricts() {
+        return regionService.listDistricts();
+    }
+
+    @GetMapping("/park-alanlari")
+    public List<NamedOptionDto> listParkAlanlari() {
+        return regionService.listParkAlanlari();
     }
 
     @GetMapping("/{id}")

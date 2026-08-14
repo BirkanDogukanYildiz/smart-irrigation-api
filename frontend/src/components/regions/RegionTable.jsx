@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import Button from "../common/Button";
 import EmptyState from "../common/EmptyState";
 import Loading from "../common/Loading";
@@ -15,8 +16,9 @@ export default function RegionTable({ regions, headGardeners, onAssignHeadGarden
             <th>Bölge No</th>
             <th>Bölge Adı</th>
             <th>İlçe</th>
-            <th>Sulama Alanı</th>
+            <th>Park Alanı</th>
             <th>Baş Bahçivan</th>
+            <th>Detay</th>
             <th>İşlemler</th>
           </tr>
         </thead>
@@ -41,6 +43,11 @@ export default function RegionTable({ regions, headGardeners, onAssignHeadGarden
                     </option>
                   ))}
                 </select>
+              </td>
+              <td>
+                <Link to={`/bolgeler/${r.id}`} style={{ color: "var(--color-primary)", fontSize: 12.5 }}>
+                  Detay →
+                </Link>
               </td>
               <td className="cell-actions">
                 <Button size="sm" variant="danger" onClick={() => onDelete(r)}>
