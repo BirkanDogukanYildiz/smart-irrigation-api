@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { deviceDisplayName } from "../../utils/deviceDisplay";
 import { FAULT_TYPES, OTHER_FAULT_TYPE } from "../../utils/faultTypes";
+import { compressImageToDataUrl } from "../../utils/imageCompress";
 import Button from "../common/Button";
 import Alert from "../common/Alert";
 import "../../styles/form.css";
@@ -8,15 +9,34 @@ import "../../styles/form.css";
 // "Arıza Bildir" butonuna basılınca açılan form. Eskiden burası iki ayrı
 // window.prompt() ile (önce açıklama, sonra opsiyonel arıza türü serbest metin)
 // çalışıyordu — artık tek bir modal içinde, arıza türü önceden tanımlı bir
-// listeden seçiliyor ("Diğer" seçilirse serbest metin alanı açılıyor).
+// listeden seçiliyor ("Diğer" seçilirse serbest metin alanı açılıyor). Fotoğraf
+// tamamen opsiyonel — eklenmezse hiçbir şey değişmez.
 export default function ReportFaultModal({ device, onSubmit, onClose }) {
   const [faultType, setFaultType] = useState(FAULT_TYPES[0]);
   const [customFaultType, setCustomFaultType] = useState("");
   const [description, setDescription] = useState("");
+  const [photoDataUrl, setPhotoDataUrl] = useState(null);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (!device) return null;
+
+  async function handlePhotoChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // aynı dosya tekrar seçilebilsin diye input'u sıfırla
+    if (!file) return;
+    setError("");
+    setPhotoProcessing(true);
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      setPhotoDataUrl(dataUrl);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPhotoProcessing(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -35,7 +55,7 @@ export default function ReportFaultModal({ device, onSubmit, onClose }) {
 
     setSubmitting(true);
     try {
-      await onSubmit(description.trim(), resolvedFaultType);
+      await onSubmit(description.trim(), resolvedFaultType, photoDataUrl);
     } catch (err) {
       setError(err.message);
       setSubmitting(false);
@@ -136,6 +156,54 @@ export default function ReportFaultModal({ device, onSubmit, onClose }) {
               placeholder="Arızayı kısaca açıklayın..."
             />
           </div>
+
+          <div className="form-field" style={{ marginTop: "var(--space-4)" }}>
+            <label htmlFor="faultPhoto">Fotoğraf (opsiyonel)</label>
+            {photoDataUrl ? (
+              <div style={{ position: "relative", marginBottom: 6 }}>
+                <img
+                  src={photoDataUrl}
+                  alt="Arıza fotoğrafı önizleme"
+                  style={{
+                    width: "100%",
+                    maxHeight: 220,
+                    objectFit: "cover",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--color-border)",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setPhotoDataUrl(null)}
+                  style={{
+                    position: "absolute",
+                    top: 6,
+                    right: 6,
+                    background: "rgba(15,23,32,0.65)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: 26,
+                    height: 26,
+                    cursor: "pointer",
+                    lineHeight: 1,
+                  }}
+                  aria-label="Fotoğrafı kaldır"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <input
+                id="faultPhoto"
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                disabled={photoProcessing}
+              />
+            )}
+            {photoProcessing && <p className="hint" style={{ marginTop: 4 }}>Fotoğraf işleniyor...</p>}
+          </div>
         </div>
 
         <div
@@ -148,7 +216,7 @@ export default function ReportFaultModal({ device, onSubmit, onClose }) {
           <Button type="button" variant="secondary" onClick={onClose} disabled={submitting} style={{ flex: 1 }}>
             İptal
           </Button>
-          <Button type="submit" variant="danger" disabled={submitting} style={{ flex: 1 }}>
+          <Button type="submit" variant="danger" disabled={submitting || photoProcessing} style={{ flex: 1 }}>
             {submitting ? "Bildiriliyor..." : "Arızayı Bildir"}
           </Button>
         </div>

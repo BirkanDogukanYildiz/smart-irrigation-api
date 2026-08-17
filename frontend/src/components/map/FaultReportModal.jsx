@@ -75,7 +75,28 @@ export default function FaultReportModal({ device, onClose }) {
           />
           <ReportRow label="Oluşturulma Tarihi" value={formatDateTime(device.createdAt)} />
           <ReportRow label="Son Güncelleme" value={formatDateTime(device.statusChangedAt)} />
-          <ReportRow label="İlgili Personel" value={device.lastUpdatedBy || "Kayıtlı değil"} last />
+          <ReportRow label="İlgili Personel" value={device.lastUpdatedBy || "Kayıtlı değil"} last={!device.photoBase64} />
+
+          {device.photoBase64 && (
+            <div style={{ marginTop: "var(--space-3)" }}>
+              <p style={{ margin: "0 0 6px", fontSize: 13, color: "var(--color-text-muted)", fontWeight: 600 }}>
+                Arıza Fotoğrafı
+              </p>
+              <img
+                src={device.photoBase64}
+                alt="Arıza fotoğrafı"
+                style={{
+                  width: "100%",
+                  maxHeight: 280,
+                  objectFit: "cover",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--color-border)",
+                  cursor: "zoom-in",
+                }}
+                onClick={() => window.open(device.photoBase64, "_blank")}
+              />
+            </div>
+          )}
         </div>
 
         <div style={{ padding: "0 var(--space-5) var(--space-5)" }}>

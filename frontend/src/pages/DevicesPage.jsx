@@ -66,8 +66,8 @@ export default function DevicesPage() {
     }
   }
 
-  async function submitFaultReport(description, faultType) {
-    await updateDeviceStatus(reportingDevice.id, "FAULTY", description, faultType);
+  async function submitFaultReport(description, faultType, photoDataUrl) {
+    await updateDeviceStatus(reportingDevice.id, "FAULTY", description, faultType, photoDataUrl);
     setReportingDevice(null);
     loadDevices();
   }

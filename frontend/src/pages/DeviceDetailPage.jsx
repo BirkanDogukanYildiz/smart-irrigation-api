@@ -78,6 +78,26 @@ export default function DeviceDetailPage() {
             />
             <DetailRow label="İlgili Personel" value={device.lastUpdatedBy || "Kayıtlı değil"} />
           </div>
+
+          {device.photoBase64 && (
+            <div style={{ marginTop: "var(--space-4)" }}>
+              <p style={{ margin: "0 0 6px", fontSize: 13, color: "var(--color-text-muted)", fontWeight: 600 }}>
+                Arıza Fotoğrafı
+              </p>
+              <img
+                src={device.photoBase64}
+                alt="Arıza fotoğrafı"
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: 360,
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--color-border)",
+                  cursor: "zoom-in",
+                }}
+                onClick={() => window.open(device.photoBase64, "_blank")}
+              />
+            </div>
+          )}
         </Section>
       )}
 

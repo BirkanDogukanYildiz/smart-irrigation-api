@@ -32,11 +32,11 @@ export function createDevice(payload) {
   });
 }
 
-// PUT /api/devices/status/{id} { status, description?, faultType? }
-export function updateDeviceStatus(id, status, description, faultType) {
+// PUT /api/devices/status/{id} { status, description?, faultType?, photoBase64? }
+export function updateDeviceStatus(id, status, description, faultType, photoBase64) {
   return apiCall(`/api/devices/status/${id}`, {
     method: "PUT",
-    body: JSON.stringify({ status, description, faultType }),
+    body: JSON.stringify({ status, description, faultType, photoBase64 }),
   });
 }
 

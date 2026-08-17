@@ -217,6 +217,10 @@ const DeviceMap = forwardRef(function DeviceMap(
         ? `<p><strong>Açık Süresi:</strong> <span style="color:#c1352a; font-weight:600;">${faultAge}</span></p>`
         : "";
 
+      const photoHtml = d.status === "FAULTY" && d.photoBase64
+        ? `<img src="${d.photoBase64}" alt="Arıza fotoğrafı" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px;margin-top:6px;" />`
+        : "";
+
       const popupEl = document.createElement("div");
       popupEl.innerHTML = `
         <h4>${deviceDisplayName(d)}</h4>
@@ -225,6 +229,7 @@ const DeviceMap = forwardRef(function DeviceMap(
         <p><strong>Durum:</strong> ${statusHtml}</p>
         <p><strong>Son Çalışma/Güncelleme:</strong> ${formatDateTime(d.statusChangedAt)}</p>
         ${faultAgeHtml}
+        ${photoHtml}
       `;
 
       if (d.status === "FAULTY" && onViewFaultReport) {

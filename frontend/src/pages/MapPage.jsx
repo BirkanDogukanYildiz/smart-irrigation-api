@@ -274,8 +274,8 @@ export default function MapPage() {
     }
   }
 
-  async function submitFaultReport(description, faultType) {
-    await updateDeviceStatus(reportingDevice.id, "FAULTY", description, faultType);
+  async function submitFaultReport(description, faultType, photoDataUrl) {
+    await updateDeviceStatus(reportingDevice.id, "FAULTY", description, faultType, photoDataUrl);
     setReportingDevice(null);
     refreshAll();
   }
