@@ -17,7 +17,7 @@ export default function RegionTable({ regions, headGardeners, onAssignHeadGarden
             <th>Bölge Adı</th>
             <th>İlçe</th>
             <th>Park Alanı</th>
-            <th>Baş Bahçivan</th>
+            <th>Personel Yetkilisi</th>
             <th>Detay</th>
             <th>İşlemler</th>
           </tr>

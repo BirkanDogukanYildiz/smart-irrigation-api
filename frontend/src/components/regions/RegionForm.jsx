@@ -103,7 +103,7 @@ export default function RegionForm({ headGardeners, onCreated }) {
             onChange={(v) => update("irrigationAreaName", v)}
           />
           <div className="form-field">
-            <label htmlFor="rHeadGardener">Baş Bahçivan (opsiyonel)</label>
+            <label htmlFor="rHeadGardener">Personel Yetkilisi (opsiyonel)</label>
             <select id="rHeadGardener" value={form.headGardenerId} onChange={(e) => update("headGardenerId", e.target.value)}>
               <option value="">— Atanmadı —</option>
               {headGardeners.map((hg) => (

@@ -59,6 +59,8 @@ const DeviceMap = forwardRef(function DeviceMap(
     drawingRegionId = null,
     drawPoints = [],
     onDrawPointAdd,
+    pickingLocation = false,
+    assetTypeFilter = "",
   },
   ref
 ) {
@@ -167,7 +169,8 @@ const DeviceMap = forwardRef(function DeviceMap(
     });
 
     const visible = devices.filter((d) => d.latitude != null && d.longitude != null);
-    const filtered = filter === "ALL" ? visible : visible.filter((d) => d.status === filter);
+    const statusFiltered = filter === "ALL" ? visible : visible.filter((d) => d.status === filter);
+    const filtered = assetTypeFilter ? statusFiltered.filter((d) => d.assetType === assetTypeFilter) : statusFiltered;
 
     filtered.forEach((d) => {
       // Not: backend şu an sadece iki gerçek durum tutuyor (WORKING / FAULTY).
@@ -211,7 +214,7 @@ const DeviceMap = forwardRef(function DeviceMap(
       // (yeni bir backend alanı/endpoint'i eklenmedi).
       const faultAge = d.status === "FAULTY" ? durationSince(d.statusChangedAt) : null;
       const faultAgeHtml = faultAge
-        ? `<p><strong>Açık Süresi:</strong> <span style="color:#c1352a; font-weight:600;">${faultAge} açık</span></p>`
+        ? `<p><strong>Açık Süresi:</strong> <span style="color:#c1352a; font-weight:600;">${faultAge}</span></p>`
         : "";
 
       const popupEl = document.createElement("div");
@@ -251,7 +254,7 @@ const DeviceMap = forwardRef(function DeviceMap(
     map.addLayer(clusterGroup);
     clusterRef.current = clusterGroup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [devices, filter, isManager]);
+  }, [devices, filter, isManager, assetTypeFilter]);
 
   // ---- Bölge zone katmanı (saydam çokgenler, tıklanabilir, seçili olan vurgulanır) ----
   useEffect(() => {
@@ -333,7 +336,7 @@ const DeviceMap = forwardRef(function DeviceMap(
     drawLayerRef.current = layer;
   }, [drawingRegionId, drawPoints]);
 
-  return <div ref={mapRef} className="big-map" style={{ cursor: drawingRegionId != null ? "crosshair" : "" }} />;
+  return <div ref={mapRef} className="big-map" style={{ cursor: drawingRegionId != null || pickingLocation ? "crosshair" : "" }} />;
 });
 
 export default DeviceMap;

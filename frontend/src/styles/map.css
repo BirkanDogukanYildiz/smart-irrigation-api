@@ -133,3 +133,27 @@
 [data-theme="dark"] .leaflet-control-attribution a {
   color: var(--color-text-muted);
 }
+
+/* Header (60px) + sticky NavBar toplam yüksekliği kadar boşluk bırakır, böylece
+   scrollIntoView() ile bu bölüme kaydırıldığında üst kısmı sticky header'ın
+   arkasında kalmaz. Hem interaktif harita bölümü hem de alttaki "Yeni Ekipman
+   Ekle" formu (haritadan pinleme sonrası oraya geri kaydırılıyor) için kullanılır. */
+.map-scroll-target,
+.form-scroll-target {
+  scroll-margin-top: 116px;
+}
+
+/* Haritadan pinleme modu aktifken kullanıcıya haritanın üstünde görünen ipucu şeridi. */
+.map-picking-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  background: var(--color-primary-lighter);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  font-size: 13px;
+  font-weight: 600;
+}

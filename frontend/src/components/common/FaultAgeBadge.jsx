@@ -23,7 +23,7 @@ export default function FaultAgeBadge({ since }) {
       }}
       title="Arızanın açık olduğu süre"
     >
-      {label} açık
+      {label}
     </span>
   );
 }

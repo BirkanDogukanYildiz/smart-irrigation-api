@@ -7,8 +7,8 @@ export const ROLES = {
 
 export const ROLE_LABELS = {
   ADMIN: "Admin",
-  HEADGARDENER: "Baş Bahçivan",
-  GARDENER: "Bahçivan",
+  HEADGARDENER: "Personel Yetkilisi",
+  GARDENER: "Personel",
 };
 
 export function roleLabel(role) {

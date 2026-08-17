@@ -57,7 +57,7 @@ export default function RegionDetailPage() {
         <div className="stat-grid">
           <DetailRow label="İlçe" value={region.districtName} />
           <DetailRow label="Park Alanı" value={region.irrigationAreaName} />
-          <DetailRow label="Sorumlu Baş Bahçivan" value={region.headGardenerUsername || "Atanmadı"} />
+          <DetailRow label="Sorumlu Personel Yetkilisi" value={region.headGardenerUsername || "Atanmadı"} />
           <DetailRow label="Açıklama" value={region.description || "—"} />
         </div>
       </Section>

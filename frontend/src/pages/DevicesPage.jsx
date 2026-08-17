@@ -3,6 +3,7 @@ import Section from "../components/common/Section";
 import Alert from "../components/common/Alert";
 import DeviceForm from "../components/devices/DeviceForm";
 import DeviceTable from "../components/devices/DeviceTable";
+import ReportFaultModal from "../components/devices/ReportFaultModal";
 import { listDevices, updateDeviceStatus, deleteDevice } from "../api/devices";
 import { listRegions } from "../api/regions";
 import { useAuth } from "../context/AuthContext";
@@ -19,6 +20,9 @@ export default function DevicesPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
+
+  // Arıza bildirme artık window.prompt yerine gerçek bir modal (bkz. ReportFaultModal) ile yapılıyor.
+  const [reportingDevice, setReportingDevice] = useState(null);
 
   async function loadDevices() {
     try {
@@ -51,33 +55,21 @@ export default function DevicesPage() {
     });
   }, [devices, typeFilter, statusFilter, regionFilter]);
 
-  async function toggleStatus(device) {
+  function toggleStatus(device) {
     if (device.status === "WORKING") {
-      const sebep = window.prompt("Arıza açıklamasını gir:");
-      if (sebep === null) return;
-      if (!sebep.trim()) {
-        window.alert("Arıza açıklaması boş olamaz.");
-        return;
-      }
-      // Arıza türü opsiyonel — boş bırakılabilir, arıza raporunda "Belirtilmemiş" olarak görünür.
-      const faultType = window.prompt(
-        "Arıza türünü gir (opsiyonel, örn. 'Vana Arızası', 'Elektrik Kesintisi'):"
-      );
-      try {
-        await updateDeviceStatus(device.id, "FAULTY", sebep.trim(), faultType?.trim() || null);
-        loadDevices();
-      } catch (e) {
-        window.alert("Durum güncellenemedi: " + e.message);
-      }
+      setReportingDevice(device);
     } else {
       if (!window.confirm("Ekipmanın onarıldığını ve tekrar çalışır duruma geldiğini onaylıyor musun?")) return;
-      try {
-        await updateDeviceStatus(device.id, "WORKING");
-        loadDevices();
-      } catch (e) {
-        window.alert("Durum güncellenemedi: " + e.message);
-      }
+      updateDeviceStatus(device.id, "WORKING")
+        .then(loadDevices)
+        .catch((e) => window.alert("Durum güncellenemedi: " + e.message));
     }
+  }
+
+  async function submitFaultReport(description, faultType) {
+    await updateDeviceStatus(reportingDevice.id, "FAULTY", description, faultType);
+    setReportingDevice(null);
+    loadDevices();
   }
 
   async function removeDevice(device) {
@@ -132,6 +124,12 @@ export default function DevicesPage() {
         )}
         <DeviceTable devices={filteredDevices} onToggleStatus={toggleStatus} onDelete={removeDevice} canDelete={admin} />
       </Section>
+
+      <ReportFaultModal
+        device={reportingDevice}
+        onSubmit={submitFaultReport}
+        onClose={() => setReportingDevice(null)}
+      />
     </>
   );
 }

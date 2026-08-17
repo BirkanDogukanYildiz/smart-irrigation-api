@@ -7,14 +7,27 @@ import { createDevice } from "../../api/devices";
 import { ASSET_TYPES, assetTypeLabel } from "../../utils/assetTypes";
 import "../../styles/form.css";
 
-export default function DeviceForm({ regions, onCreated }) {
+export default function DeviceForm({
+  regions,
+  onCreated,
+  showLocationPicker = true,
+  location: controlledLocation = null,
+  onRequestPin,
+  requireLocation = false,
+}) {
   const [regionId, setRegionId] = useState("");
   const [deviceNo, setDeviceNo] = useState("");
   const [assetType, setAssetType] = useState(ASSET_TYPES.SULAMA_CIHAZI);
-  const [location, setLocation] = useState(null);
+  const [internalLocation, setInternalLocation] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // showLocationPicker=true iken (kendi mini haritası olan formlar, örn. Cihazlar
+  // sayfası) konum kendi state'inde tutulur. showLocationPicker=false iken (örn.
+  // Harita sayfası) konum üstteki ana haritadan pinlenir ve parent'tan controlled
+  // olarak gelir (bkz. MapPage — formLocation).
+  const location = showLocationPicker ? internalLocation : controlledLocation;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -27,6 +40,10 @@ export default function DeviceForm({ regions, onCreated }) {
     }
     if (!deviceNo) {
       setError("Lütfen cihaz numarası girin.");
+      return;
+    }
+    if (requireLocation && !location) {
+      setError("Lütfen haritadan bir konum pinleyin. Konum pinlemeden ekipman eklenemez.");
       return;
     }
 
@@ -42,7 +59,7 @@ export default function DeviceForm({ regions, onCreated }) {
       setSuccess("Ekipman başarıyla eklendi.");
       setDeviceNo("");
       setAssetType(ASSET_TYPES.SULAMA_CIHAZI);
-      setLocation(null);
+      setInternalLocation(null);
       onCreated?.();
     } catch (err) {
       setError(err.message);
@@ -90,13 +107,35 @@ export default function DeviceForm({ regions, onCreated }) {
           </div>
         </div>
 
-        <div className="form-field" style={{ marginBottom: "var(--space-4)" }}>
-          <label>Harita Konumu (opsiyonel)</label>
-          <p className="hint" style={{ marginBottom: 4 }}>
-            Boş bırakırsanız konum daha sonra Harita sayfasından da ayarlanabilir.
-          </p>
-          <LocationPicker value={location} onChange={setLocation} />
-        </div>
+        {showLocationPicker ? (
+          <div className="form-field" style={{ marginBottom: "var(--space-4)" }}>
+            <label>Harita Konumu (opsiyonel)</label>
+            <p className="hint" style={{ marginBottom: 4 }}>
+              Boş bırakırsanız konum daha sonra Harita sayfasından da ayarlanabilir.
+            </p>
+            <LocationPicker value={location} onChange={setInternalLocation} />
+          </div>
+        ) : (
+          <div className="form-field" style={{ marginBottom: "var(--space-4)" }}>
+            <label>
+              Harita Konumu {requireLocation ? <span style={{ color: "var(--color-danger)" }}>*</span> : "(opsiyonel)"}
+            </label>
+            {location ? (
+              <p className="hint" style={{ marginBottom: 4 }}>
+                <b style={{ color: "var(--color-text)" }}>Pinlendi:</b> {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+              </p>
+            ) : (
+              <p className="hint" style={{ marginBottom: 4, color: requireLocation ? "var(--color-danger)" : undefined }}>
+                {requireLocation
+                  ? "Henüz konum pinlenmedi — üstteki haritadan pinlemeniz gerekiyor."
+                  : "Konum seçilmedi."}
+              </p>
+            )}
+            <Button type="button" variant="secondary" size="sm" onClick={onRequestPin}>
+              {location ? "Konumu Haritadan Değiştir" : "Haritadan Pinle"}
+            </Button>
+          </div>
+        )}
 
         <div className="form-actions">
           <Button type="submit" variant="primary" disabled={submitting}>

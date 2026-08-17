@@ -8,6 +8,7 @@ import DeviceMap from "../components/map/DeviceMap";
 import RegionInfoPanel from "../components/map/RegionInfoPanel";
 import DeviceForm from "../components/devices/DeviceForm";
 import DeviceTable from "../components/devices/DeviceTable";
+import ReportFaultModal from "../components/devices/ReportFaultModal";
 import { listDevices, searchDevices, createDevice, updateDeviceStatus, deleteDevice, updateDeviceLocation } from "../api/devices";
 import { listRegions, updateRegionBoundary } from "../api/regions";
 import { exportDevicesCsv, exportFaultsCsv } from "../api/export";
@@ -29,6 +30,7 @@ export default function MapPage() {
   const manager = isManager(role);
   const admin = isAdmin(role);
   const mapApiRef = useRef(null);
+  const mapSectionRef = useRef(null);
 
   const [devices, setDevices] = useState([]);
   const [regions, setRegions] = useState([]);
@@ -50,6 +52,17 @@ export default function MapPage() {
   const [quickAddDeviceNo, setQuickAddDeviceNo] = useState("");
   const [quickAddAssetType, setQuickAddAssetType] = useState(ASSET_TYPES.SULAMA_CIHAZI);
   const [quickAddSubmitting, setQuickAddSubmitting] = useState(false);
+
+  // Alttaki "Yeni Ekipman Ekle" formu için üst haritadan pinleme akışı: kullanıcı
+  // formdaki "Haritadan Pinle" butonuna basınca pickingForForm true olur, harita
+  // görünüme kaydırılır; bir sonraki harita tıklaması hızlı-ekle panelini DEĞİL,
+  // bu konumu (formLocation) set eder ve kullanıcı tekrar forma kaydırılır.
+  const [formLocation, setFormLocation] = useState(null);
+  const [pickingForForm, setPickingForForm] = useState(false);
+  const formSectionRef = useRef(null);
+
+  // Arıza bildirme artık window.prompt yerine gerçek bir modal (bkz. ReportFaultModal) ile yapılıyor.
+  const [reportingDevice, setReportingDevice] = useState(null);
 
   // ---- Alt bölüm: cihaz yönetimi (server-side arama/filtre/sayfalama) — sadece manager ----
   const [managedDevices, setManagedDevices] = useState(null);
@@ -117,6 +130,11 @@ export default function MapPage() {
     loadManagedDevices();
   }
 
+  function handleFormDeviceCreated() {
+    setFormLocation(null);
+    refreshAll();
+  }
+
   async function handleLocationChange(id, lat, lng) {
     await updateDeviceLocation(id, lat, lng);
     setDevices((prev) => prev.map((d) => (d.id === id ? { ...d, latitude: lat, longitude: lng } : d)));
@@ -134,10 +152,24 @@ export default function MapPage() {
 
   function handleEmptyClick(lat, lng) {
     if (!manager) return;
+    // Form için pinleme modu aktifse: hızlı-ekle panelini açmak yerine bu konumu
+    // forma yaz, pinleme modunu kapat ve kullanıcıyı forma geri kaydır.
+    if (pickingForForm) {
+      setFormLocation({ lat, lng });
+      setPickingForForm(false);
+      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     setPendingLocation({ lat, lng });
     setQuickAddRegionId("");
     setQuickAddDeviceNo("");
     setQuickAddAssetType(ASSET_TYPES.SULAMA_CIHAZI);
+  }
+
+  function startPinningForForm() {
+    setPickingForForm(true);
+    setPendingLocation(null);
+    mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function submitQuickAdd() {
@@ -171,10 +203,18 @@ export default function MapPage() {
     mapApiRef.current?.flyToRegion(region);
   }
 
-  // ---- Zone'a (bölge sınırına) tıklanınca: zoom + vurgula + bilgi paneli aç ----
+  // ---- Zone'a (bölge sınırına) tıklanınca: zoom + vurgula + bilgi paneli aç + haritayı görünüme getir ----
   function handleZoneClick(region) {
     setSelectedRegionId(region.id);
     flyToRegion(region);
+    // Sayfa aşağı kaydırılmışsa (örn. alttaki cihaz listesindeyken "Bölgeye Git" kullanıldıysa)
+    // harita otomatik olarak görünür alana kaydırılsın — kullanıcı elle yukarı çıkmasın.
+    // requestAnimationFrame: state güncellemesiyle (RegionInfoPanel açılıp haritanın üstündeki
+    // içerik büyüyebiliyor) DOM boyutunun oturmasını bekleyip ondan sonra kaydırıyoruz, yoksa
+    // scrollIntoView eski (daha kısa) layout'a göre hesaplanıp hedefin biraz gerisinde kalabiliyordu.
+    requestAnimationFrame(() => {
+      mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   // ---- Admin: bölge sınırı (zone) çizimi ----
@@ -223,30 +263,21 @@ export default function MapPage() {
     }
   }
 
-  async function toggleStatus(device) {
+  function toggleStatus(device) {
     if (device.status === "WORKING") {
-      const sebep = window.prompt("Arıza açıklamasını gir:");
-      if (sebep === null) return;
-      if (!sebep.trim()) {
-        window.alert("Arıza açıklaması boş olamaz.");
-        return;
-      }
-      const faultType = window.prompt("Arıza türünü gir (opsiyonel):");
-      try {
-        await updateDeviceStatus(device.id, "FAULTY", sebep.trim(), faultType?.trim() || null);
-        refreshAll();
-      } catch (e) {
-        window.alert("Durum güncellenemedi: " + e.message);
-      }
+      setReportingDevice(device);
     } else {
       if (!window.confirm("Ekipmanın onarıldığını onaylıyor musun?")) return;
-      try {
-        await updateDeviceStatus(device.id, "WORKING");
-        refreshAll();
-      } catch (e) {
-        window.alert("Durum güncellenemedi: " + e.message);
-      }
+      updateDeviceStatus(device.id, "WORKING")
+        .then(refreshAll)
+        .catch((e) => window.alert("Durum güncellenemedi: " + e.message));
     }
+  }
+
+  async function submitFaultReport(description, faultType) {
+    await updateDeviceStatus(reportingDevice.id, "FAULTY", description, faultType);
+    setReportingDevice(null);
+    refreshAll();
   }
 
   async function handleExport(fn) {
@@ -262,6 +293,7 @@ export default function MapPage() {
 
   return (
     <>
+      <div ref={mapSectionRef} className="map-scroll-target">
       <Section
         title="İnteraktif Harita"
         subtitle={
@@ -271,6 +303,15 @@ export default function MapPage() {
         }
       >
         <Alert type="error">{error}</Alert>
+
+        {pickingForForm && (
+          <div className="map-picking-banner">
+            <span>📍 Aşağıdaki formda eklenecek ekipman için haritada bir konuma tıklayın.</span>
+            <Button size="sm" variant="secondary" onClick={() => setPickingForForm(false)}>
+              İptal
+            </Button>
+          </div>
+        )}
 
         <RegionInfoPanel
           region={selectedRegion}
@@ -319,6 +360,29 @@ export default function MapPage() {
               <input type="checkbox" checked={showZones} onChange={(e) => setShowZones(e.target.checked)} />
               Bölge sınırlarını göster
             </label>
+          )}
+        </div>
+
+        {/* --- Ekipman türü filtresi: haritada hangi pinlerin görüneceğini belirler.
+            Aynı state (typeFilter) sayfanın en altındaki "Kayıtlı Ekipmanlar" tablo
+            filtresiyle de PAYLAŞILIYOR — ikisi birbirinden bağımsız değil, tek bir
+            filtre olarak davranıyorlar. --- */}
+        <div className="map-toolbar">
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--color-text-muted)" }}>
+            Ekipman Türü:
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ minWidth: 160 }}>
+              <option value="">Tüm türler</option>
+              {Object.values(ASSET_TYPES).map((t) => (
+                <option key={t} value={t}>
+                  {assetTypeLabel(t)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {typeFilter && (
+            <Button size="sm" variant="ghost" onClick={() => setTypeFilter("")}>
+              Filtreyi Temizle
+            </Button>
           )}
         </div>
 
@@ -438,15 +502,32 @@ export default function MapPage() {
           drawingRegionId={drawingRegionId}
           drawPoints={drawPoints}
           onDrawPointAdd={(lat, lng) => setDrawPoints((prev) => [...prev, [lat, lng]])}
+          pickingLocation={pickingForForm}
+          assetTypeFilter={typeFilter}
         />
       </Section>
+      </div>
 
       {/* --- Cihaz yönetimi: form + arama/filtre/sayfalama + dışa aktarma. Harita ile
           AYNI sayfaya taşındı (eskiden ayrı "Cihazlar" sekmesindeydi). Sadece manager
-          (ADMIN+HEADGARDENER) görür — mevcut yetkilendirme aynen korunuyor. --- */}
+          (ADMIN+HEADGARDENER) görür — mevcut yetkilendirme aynen korunuyor.
+          Bu sayfada zaten yukarıda büyük bir interaktif harita var, üstelik haritaya
+          tıklayarak konum seçip hızlıca ekipman ekleme akışı da mevcut (bkz. "pendingLocation").
+          Bu yüzden DeviceForm'un kendi mini haritasını (LocationPicker) BURADA GÖSTERMİYORUZ —
+          aynı sayfada iki ayrı Leaflet haritası olması kafa karıştırıcı oluyordu. Konum,
+          formdan boş bırakılıp sonradan üstteki haritadan (pin sürükleyerek) da ayarlanabilir. --- */}
       {manager && (
         <>
-          <DeviceForm regions={regions} onCreated={refreshAll} />
+          <div ref={formSectionRef} className="form-scroll-target">
+            <DeviceForm
+              regions={regions}
+              onCreated={handleFormDeviceCreated}
+              showLocationPicker={false}
+              location={formLocation}
+              onRequestPin={startPinningForForm}
+              requireLocation
+            />
+          </div>
 
           <Section
             title="Kayıtlı Ekipmanlar"
@@ -499,6 +580,12 @@ export default function MapPage() {
           </Section>
         </>
       )}
+
+      <ReportFaultModal
+        device={reportingDevice}
+        onSubmit={submitFaultReport}
+        onClose={() => setReportingDevice(null)}
+      />
     </>
   );
 }

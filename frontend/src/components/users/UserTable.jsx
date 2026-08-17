@@ -18,7 +18,7 @@ export default function UserTable({ users, headGardeners, onAssignHeadGardener, 
           <tr>
             <th>Kullanıcı Adı</th>
             <th>Rol</th>
-            <th>Bağlı Olduğu Baş Bahçivan</th>
+            <th>Bağlı Olduğu Personel Yetkilisi</th>
             <th>İşlemler</th>
           </tr>
         </thead>
@@ -32,7 +32,7 @@ export default function UserTable({ users, headGardeners, onAssignHeadGardener, 
                 <td>
                   {u.role === ROLES.GARDENER ? (
                     headGardeners.length === 0 ? (
-                      <span className="cell-muted">Sistemde henüz Baş Bahçivan yok</span>
+                      <span className="cell-muted">Sistemde henüz Personel Yetkilisi yok</span>
                     ) : (
                       <select
                         value={u.headGardenerId ?? ""}

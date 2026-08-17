@@ -62,7 +62,7 @@ export default function DeviceDetailPage() {
           <DetailRow label="Bölge" value={device.region?.regionName} />
           <DetailRow label="İlçe" value={device.region?.districtName} />
           <DetailRow label="Ekipman No" value={`#${device.deviceNo}`} />
-          <DetailRow label="Sorumlu Baş Bahçivan" value={device.region?.headGardenerUsername || "Atanmadı"} />
+          <DetailRow label="Sorumlu Personel Yetkilisi" value={device.region?.headGardenerUsername || "Atanmadı"} />
         </div>
       </Section>
 
@@ -73,7 +73,7 @@ export default function DeviceDetailPage() {
             <DetailRow label="Açıklama" value={device.description || "—"} />
             <DetailRow
               label="Açık Süresi"
-              value={`${durationSince(device.statusChangedAt) || "—"} açık`}
+              value={durationSince(device.statusChangedAt) || "—"}
               tone="danger"
             />
             <DetailRow label="İlgili Personel" value={device.lastUpdatedBy || "Kayıtlı değil"} />

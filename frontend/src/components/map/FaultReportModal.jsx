@@ -70,7 +70,7 @@ export default function FaultReportModal({ device, onClose }) {
           <ReportRow label="Durum" value="Arızalı" valueColor="var(--color-danger)" />
           <ReportRow
             label="Açık Süresi"
-            value={`${durationSince(device.statusChangedAt) || "—"} açık`}
+            value={durationSince(device.statusChangedAt) || "—"}
             valueColor="var(--color-danger)"
           />
           <ReportRow label="Oluşturulma Tarihi" value={formatDateTime(device.createdAt)} />
