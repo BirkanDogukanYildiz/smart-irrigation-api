@@ -42,6 +42,7 @@ public class CitizenRequestService {
         }
         dto.setMessage(entity.getMessage());
         dto.setStatus(entity.getStatus());
+        dto.setReviewNote(entity.getReviewNote());
         dto.setCreatedAt(entity.getCreatedAt());
         return dto;
     }
@@ -83,20 +84,34 @@ public class CitizenRequestService {
         return stream.map(this::toDto).toList();
     }
 
+    // Talep durumu artık üç aşamalı: YENI (İncelenmedi) ⇄ INCELENIYOR (İnceleniyor) ⇄
+    // INCELENDI (İncelendi). Geçişler İKİ YÖNLÜ de yapılabilir (örn. yanlışlıkla
+    // "İncelendi" yapılan bir talep tekrar "İnceleniyor"a çekilebilir) — burada
+    // zorunlu bir sıralama/validasyon UYGULANMIYOR, personel her durumdan her duruma
+    // geçebilir. Not (reviewNote) her geçişte OPSİYONEL — boş bırakılabilir, girilirse
+    // en güncel not olarak kayda işlenir; ayrıca eski/yeni durum + not bilgisi mevcut
+    // İşlem Geçmişi (AuditLog) sistemine kaydedilir.
     @Transactional
-    public CitizenRequestResponseDto markReviewed(Long id) {
+    public CitizenRequestResponseDto updateStatus(Long id, RequestStatus newStatus, String note) {
         CitizenRequest entity = citizenRequestRepository.findById(id)
                 .orElseThrow(() -> new RequestNotFoundException(id));
-        entity.setStatus(RequestStatus.INCELENDI);
+
+        RequestStatus oldStatus = entity.getStatus();
+        entity.setStatus(newStatus);
+        String trimmedNote = note != null && !note.isBlank() ? note.trim() : null;
+        if (trimmedNote != null) {
+            entity.setReviewNote(trimmedNote);
+        }
         CitizenRequest saved = citizenRequestRepository.save(entity);
 
+        String noteSuffix = trimmedNote != null ? " Not: \"" + trimmedNote + "\"" : "";
         auditLogService.logAction(
-                AuditActions.TALEP_INCELENDI,
+                AuditActions.TALEP_DURUM_DEGISTI,
                 AuditActions.KAYNAK_TALEP,
                 saved.getId(),
-                "'" + saved.getFullName() + "' tarafından oluşturulan talep incelendi olarak işaretlendi.",
-                RequestStatus.YENI.toString(),
-                RequestStatus.INCELENDI.toString()
+                "'" + saved.getFullName() + "' tarafından oluşturulan talebin durumu değiştirildi." + noteSuffix,
+                oldStatus.toString(),
+                newStatus.toString()
         );
 
         return toDto(saved);

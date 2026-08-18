@@ -4,6 +4,7 @@ import Alert from "../../components/common/Alert";
 import Button from "../../components/common/Button";
 import { getPublicRegionOptions, createCitizenRequest } from "../../api/public";
 import { REQUEST_TOPICS, requestTopicLabel } from "../../utils/requestTopics";
+import { regionDisplayName } from "../../utils/regionDisplay";
 import "../../styles/form.css";
 
 // Vatandaş "Talep Oluştur" sayfası: kimlik doğrulama gerektirmez. Personel tarafında
@@ -118,7 +119,7 @@ export default function CitizenRequestPage() {
                 <option value="">— Belirtmek istemiyorum —</option>
                 {regions.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.regionName} ({r.districtName})
+                    {regionDisplayName(r)}
                   </option>
                 ))}
               </select>

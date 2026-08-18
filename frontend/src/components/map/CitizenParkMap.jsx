@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { parkPinIcon } from "../../utils/mapIcons";
 import { parseBoundary, polygonCentroid } from "../../utils/geo";
+import { regionDisplayName } from "../../utils/regionDisplay";
 import "../../styles/map.css";
 
 const ISTANBUL_CENTER = [41.0136, 28.955];
@@ -58,8 +59,7 @@ export default function CitizenParkMap({ parks }) {
 
       const popupEl = document.createElement("div");
       popupEl.innerHTML = `
-        <h4>${park.regionName}</h4>
-        <p><strong>İlçe:</strong> ${park.districtName ?? "—"}</p>
+        <h4>${regionDisplayName(park)}</h4>
         ${park.description ? `<p>${park.description}</p>` : ""}
         <p><strong>Ekipman Sayısı:</strong> ${park.assetCount}</p>
       `;

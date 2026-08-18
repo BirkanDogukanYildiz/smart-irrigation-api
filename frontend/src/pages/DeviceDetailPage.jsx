@@ -8,6 +8,7 @@ import AssetTypeBadge from "../components/common/AssetTypeBadge";
 import FaultAgeBadge from "../components/common/FaultAgeBadge";
 import { getDevice } from "../api/devices";
 import { deviceDisplayName } from "../utils/deviceDisplay";
+import { regionDisplayName } from "../utils/regionDisplay";
 import { formatDateTime } from "../utils/format";
 import { durationSince } from "../utils/durationSince";
 
@@ -59,8 +60,7 @@ export default function DeviceDetailPage() {
         }
       >
         <div className="stat-grid">
-          <DetailRow label="Bölge" value={device.region?.regionName} />
-          <DetailRow label="İlçe" value={device.region?.districtName} />
+          <DetailRow label="Park" value={device.region ? regionDisplayName(device.region) : "—"} />
           <DetailRow label="Ekipman No" value={`#${device.deviceNo}`} />
           <DetailRow label="Sorumlu Personel Yetkilisi" value={device.region?.headGardenerUsername || "Atanmadı"} />
         </div>

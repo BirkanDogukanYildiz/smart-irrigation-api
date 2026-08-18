@@ -10,6 +10,7 @@ import { deviceDisplayName } from "../../utils/deviceDisplay";
 import { formatDateTime } from "../../utils/format";
 import { durationSince } from "../../utils/durationSince";
 import { parseBoundary } from "../../utils/geo";
+import { regionDisplayName } from "../../utils/regionDisplay";
 import "../../styles/map.css";
 
 const ISTANBUL_CENTER = [41.0136, 28.955];
@@ -88,7 +89,7 @@ const DeviceMap = forwardRef(function DeviceMap(
       }
 
       window.alert(
-        `"${region.regionName}" için henüz haritada bir sınır çizilmemiş ve konumu bilinen bir ekipmanı yok.`
+        `"${regionDisplayName(region)}" için henüz haritada bir sınır çizilmemiş ve konumu bilinen bir ekipmanı yok.`
       );
     },
   }));
@@ -215,7 +216,7 @@ const DeviceMap = forwardRef(function DeviceMap(
       popupEl.innerHTML = `
         <h4>${deviceDisplayName(d)}</h4>
         <p><strong>Cihaz ID:</strong> #${d.id}</p>
-        <p><strong>Bölge:</strong> ${d.region?.regionName ?? ""} (${d.region?.districtName ?? ""})</p>
+        <p><strong>Bölge:</strong> ${d.region ? regionDisplayName(d.region) : "—"}</p>
         <p><strong>Durum:</strong> ${statusHtml}</p>
         <p><strong>Son Çalışma/Güncelleme:</strong> ${formatDateTime(d.statusChangedAt)}</p>
         ${faultAgeHtml}
@@ -279,7 +280,7 @@ const DeviceMap = forwardRef(function DeviceMap(
         fillOpacity: isSelected ? 0.32 : 0.15,
         opacity: isSelected ? 1 : 0.7,
       });
-      polygon.bindTooltip(region.regionName, { sticky: true });
+      polygon.bindTooltip(regionDisplayName(region), { sticky: true });
       polygon.on("click", (e) => {
         // Harita üzerinde tıklama zone'dan taşıp map'in genel click handler'ına (yeni
         // ekipman ekleme/çizim modu) gitmesin diye durduruyoruz.

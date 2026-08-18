@@ -1,4 +1,5 @@
 import { deviceDisplayName } from "../../utils/deviceDisplay";
+import { regionDisplayName } from "../../utils/regionDisplay";
 import { formatDateTime } from "../../utils/format";
 import { durationSince } from "../../utils/durationSince";
 import Button from "../common/Button";
@@ -66,7 +67,7 @@ export default function FaultReportModal({ device, onClose }) {
           <ReportRow label="Açıklama" value={device.description || "—"} />
           <ReportRow label="Cihaz" value={deviceDisplayName(device)} />
           <ReportRow label="Cihaz ID" value={`#${device.id}`} />
-          <ReportRow label="Bölge" value={`${device.region?.regionName ?? "—"} (${device.region?.districtName ?? "—"})`} />
+          <ReportRow label="Park" value={device.region ? regionDisplayName(device.region) : "—"} />
           <ReportRow label="Durum" value="Arızalı" valueColor="var(--color-danger)" />
           <ReportRow
             label="Açık Süresi"

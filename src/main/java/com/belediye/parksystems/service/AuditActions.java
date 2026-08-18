@@ -34,7 +34,12 @@ public final class AuditActions {
 
     // Vatandaş talebi (kimlik doğrulama gerektirmeden /api/public/requests üzerinden oluşturulur)
     public static final String TALEP_OLUSTURULDU = "Talep oluşturuldu";
-    public static final String TALEP_INCELENDI = "Talep incelendi";
+    // Talep durum geçişi (İncelenmedi ⇄ İnceleniyor ⇄ İncelendi, iki yönlü) — eski
+    // TALEP_INCELENDI sabiti bilinçli olarak KALDIRILMADI/DEĞİŞTİRİLMEDİ diye
+    // düşünülebilir ama bu sabit hiçbir persisted veride kullanılmıyor (AuditLog'un
+    // action alanı sadece görüntüleme metni, enum değil), bu yüzden serbestçe
+    // genelleştirildi — eski log kayıtları da zaten kendi eski metnini korur.
+    public static final String TALEP_DURUM_DEGISTI = "Talep durumu değiştirildi";
 
     // Bölge
     public static final String BOLGE_OLUSTURULDU = "Bölge oluşturuldu";

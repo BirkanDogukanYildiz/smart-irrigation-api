@@ -57,9 +57,16 @@ export default function DeviceForm({
         longitude: location?.lng ?? null,
       });
       setSuccess("Ekipman başarıyla eklendi.");
-      setDeviceNo("");
-      setAssetType(ASSET_TYPES.SULAMA_CIHAZI);
-      setInternalLocation(null);
+      // Bölge ve Ekipman Türü BİLİNÇLİ OLARAK sıfırlanmıyor: aynı bölgede/türde arka
+      // arkaya birden fazla cihaz eklemek çok yaygın bir akış (bkz. pin ile toplu
+      // ekleme), her seferinde yeniden seçmeye zorlamak gereksiz sürtünme yaratıyordu.
+      // Ekipman No ise boşaltılmak yerine bir sonraki muhtemel numaraya (+1) otomatik
+      // ilerletiliyor — aynı numarayı aynı bölgede tekrar kullanmak zaten backend'de
+      // "region + deviceNo" tekil kısıtına takılıp hataya yol açardı (bkz. SprinklerInfo
+      // entity'sindeki @UniqueConstraint), bu yüzden "hiç değiştirmeme" yerine "kullanıcı
+      // adına mantıklı bir sonraki değeri önerme" tercih edildi — kullanıcı dilerse üzerine yazabilir.
+      setDeviceNo((prev) => String(Number(prev) + 1));
+      if (showLocationPicker) setInternalLocation(null);
       onCreated?.();
     } catch (err) {
       setError(err.message);

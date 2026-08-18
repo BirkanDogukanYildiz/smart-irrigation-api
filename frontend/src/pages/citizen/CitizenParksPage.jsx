@@ -5,6 +5,7 @@ import Loading from "../../components/common/Loading";
 import EmptyState from "../../components/common/EmptyState";
 import CitizenParkMap from "../../components/map/CitizenParkMap";
 import { getPublicParks } from "../../api/public";
+import { regionDisplayName } from "../../utils/regionDisplay";
 
 // Vatandaş "Parklar" sayfası: personel tarafında zone'u çizilmiş bölgeleri, polygon
 // olarak DEĞİL, merkez noktasına yerleştirilmiş bir pin olarak gösterir (bkz.
@@ -47,9 +48,7 @@ export default function CitizenParksPage() {
                   fontSize: 13.5,
                 }}
               >
-                <span>
-                  {p.regionName} <span style={{ color: "var(--color-text-faint)" }}>({p.districtName})</span>
-                </span>
+                <span>{regionDisplayName(p)}</span>
                 <strong>{p.assetCount} ekipman</strong>
               </li>
             ))}

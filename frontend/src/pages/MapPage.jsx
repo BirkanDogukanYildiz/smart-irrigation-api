@@ -16,6 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import { isManager, isAdmin } from "../utils/roles";
 import { zoneColorForRegion } from "../utils/zoneColors";
 import { ASSET_TYPES, assetTypeLabel } from "../utils/assetTypes";
+import { regionDisplayName } from "../utils/regionDisplay";
 import "../styles/map.css";
 
 const PAGE_SIZE = 20;
@@ -44,6 +45,11 @@ export default function MapPage() {
   const [drawingRegionId, setDrawingRegionId] = useState(null);
   const [drawPoints, setDrawPoints] = useState([]);
   const [savingBoundary, setSavingBoundary] = useState(false);
+  // Çizim BAŞLAMADAN önceki seçim akışı: "İlçe seç → Park seç → Çiz". Eskiden tüm
+  // bölgeler tek bir satırda yan yana buton olarak listeleniyordu (çok sayıda bölgede
+  // dağınık/okunaksız oluyordu) — artık iki aşamalı, kademeli (cascading) bir seçim var.
+  const [drawDistrict, setDrawDistrict] = useState("");
+  const [drawPickRegionId, setDrawPickRegionId] = useState("");
 
   // Haritaya tıklayarak hızlı ekipman ekleme: artık window.prompt ile numara YAZDIRMIYORUZ,
   // bölge gerçek bir <select> içinde alt alta listeleniyor, oradan seçiliyor.
@@ -212,9 +218,13 @@ export default function MapPage() {
     // requestAnimationFrame: state güncellemesiyle (RegionInfoPanel açılıp haritanın üstündeki
     // içerik büyüyebiliyor) DOM boyutunun oturmasını bekleyip ondan sonra kaydırıyoruz, yoksa
     // scrollIntoView eski (daha kısa) layout'a göre hesaplanıp hedefin biraz gerisinde kalabiliyordu.
-    requestAnimationFrame(() => {
-      mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    // Ekstra sağlamlaştırma: tek bir rAF bazı mobil tarayıcılarda (yavaş layout/reflow,
+    // adres çubuğu animasyonu vb.) yetersiz kalabiliyor — bu yüzden rAF'a ek olarak kısa
+    // bir setTimeout fallback'i de tetikliyoruz; ikinci çağrı zaten doğru konumdaysa
+    // scrollIntoView no-op'a yakın davranır, zararsızdır.
+    const doScroll = () => mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    requestAnimationFrame(doScroll);
+    setTimeout(doScroll, 250);
   }
 
   // ---- Admin: bölge sınırı (zone) çizimi ----
@@ -228,6 +238,8 @@ export default function MapPage() {
   function cancelDrawing() {
     setDrawingRegionId(null);
     setDrawPoints([]);
+    setDrawDistrict("");
+    setDrawPickRegionId("");
   }
 
   function undoLastPoint() {
@@ -245,6 +257,8 @@ export default function MapPage() {
       await loadRegions();
       setDrawingRegionId(null);
       setDrawPoints([]);
+      setDrawDistrict("");
+      setDrawPickRegionId("");
     } catch (e) {
       window.alert("Bölge sınırı kaydedilemedi: " + e.message);
     } finally {
@@ -253,7 +267,7 @@ export default function MapPage() {
   }
 
   async function clearZone(region) {
-    if (!window.confirm(`"${region.regionName}" bölgesinin haritadaki sınırını kaldırmak istediğinize emin misiniz?`))
+    if (!window.confirm(`"${regionDisplayName(region)}" parkının haritadaki sınırını kaldırmak istediğinize emin misiniz?`))
       return;
     try {
       await updateRegionBoundary(region.id, null);
@@ -290,6 +304,11 @@ export default function MapPage() {
 
   const drawingRegion = regions.find((r) => r.id === drawingRegionId) || null;
   const selectedRegion = regions.find((r) => r.id === selectedRegionId) || null;
+
+  // Çizim seçim akışı için: mevcut bölgelerdeki benzersiz ilçeler, ve seçili ilçedeki parklar.
+  const drawDistricts = [...new Set(regions.map((r) => r.districtName))].sort((a, b) => a.localeCompare(b, "tr"));
+  const drawDistrictParks = drawDistrict ? regions.filter((r) => r.districtName === drawDistrict) : [];
+  const drawPickRegion = regions.find((r) => r.id === Number(drawPickRegionId)) || null;
 
   return (
     <>
@@ -336,7 +355,7 @@ export default function MapPage() {
                 <option value="">— Bölge seçin —</option>
                 {regions.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.regionName} ({r.districtName})
+                    {regionDisplayName(r)}
                   </option>
                 ))}
               </select>
@@ -386,46 +405,67 @@ export default function MapPage() {
           )}
         </div>
 
-        {/* --- Admin: zone çizim kontrolleri --- */}
+        {/* --- Admin: zone çizim kontrolleri — kademeli akış: İlçe seç → Park seç → Çiz.
+            Eskiden tüm bölgeler tek satırda yan yana buton olarak listeleniyordu; bölge
+            sayısı arttıkça bu dağınık/okunaksız hale geliyordu. --- */}
         {admin && (
           <div className="map-toolbar" style={{ flexWrap: "wrap" }}>
             {drawingRegionId == null ? (
               <>
-                <span className="hint" style={{ marginRight: 4 }}>
-                  Bölge sınırı çiz/düzenle:
-                </span>
-                {regions.map((r) => (
-                  <button key={r.id} className="map-filter-btn" onClick={() => startDrawing(r)}>
-                    {r.boundary ? "Düzenle: " : "Çiz: "}
-                    {r.regionName}
-                  </button>
-                ))}
-                {regions.filter((r) => r.boundary).length > 0 && (
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--color-text-muted)" }}>
+                  1. İlçe:
                   <select
-                    defaultValue=""
+                    value={drawDistrict}
                     onChange={(e) => {
-                      const region = regions.find((r) => String(r.id) === e.target.value);
-                      if (region) clearZone(region);
-                      e.target.value = "";
+                      setDrawDistrict(e.target.value);
+                      setDrawPickRegionId("");
                     }}
+                    style={{ minWidth: 150 }}
                   >
-                    <option value="" disabled>
-                      Sınır kaldır...
-                    </option>
-                    {regions
-                      .filter((r) => r.boundary)
-                      .map((r) => (
+                    <option value="">— İlçe seçin —</option>
+                    {drawDistricts.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {drawDistrict && (
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--color-text-muted)" }}>
+                    2. Park:
+                    <select
+                      value={drawPickRegionId}
+                      onChange={(e) => setDrawPickRegionId(e.target.value)}
+                      style={{ minWidth: 180 }}
+                    >
+                      <option value="">— Park seçin —</option>
+                      {drawDistrictParks.map((r) => (
                         <option key={r.id} value={r.id}>
-                          {r.regionName}
+                          {r.regionName} {r.boundary ? "(sınır çizili)" : "(sınır yok)"}
                         </option>
                       ))}
-                  </select>
+                    </select>
+                  </label>
+                )}
+
+                {drawPickRegion && (
+                  <>
+                    <Button size="sm" variant="primary" onClick={() => startDrawing(drawPickRegion)}>
+                      3. {drawPickRegion.boundary ? "Sınırı Düzenle" : "Çizmeye Başla"}
+                    </Button>
+                    {drawPickRegion.boundary && (
+                      <Button size="sm" variant="danger" onClick={() => clearZone(drawPickRegion)}>
+                        Sınırı Kaldır
+                      </Button>
+                    )}
+                  </>
                 )}
               </>
             ) : (
               <>
                 <span style={{ fontSize: 12.5, fontWeight: 600 }}>
-                  "{drawingRegion?.regionName}" için sınır çiziliyor — haritaya tıklayarak nokta ekleyin (
+                  "{regionDisplayName(drawingRegion)}" için sınır çiziliyor — haritaya tıklayarak nokta ekleyin (
                   {drawPoints.length} nokta, en az 3 gerekli).
                 </span>
                 <Button size="sm" variant="secondary" onClick={undoLastPoint} disabled={drawPoints.length === 0}>
@@ -453,7 +493,7 @@ export default function MapPage() {
               <option value="">— Bölge seçin —</option>
               {regions.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.regionName} ({r.districtName})
+                  {regionDisplayName(r)}
                 </option>
               ))}
             </select>
@@ -544,7 +584,7 @@ export default function MapPage() {
                   <option value="">Tüm bölgeler</option>
                   {regions.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.regionName}
+                      {regionDisplayName(r)}
                     </option>
                   ))}
                 </select>

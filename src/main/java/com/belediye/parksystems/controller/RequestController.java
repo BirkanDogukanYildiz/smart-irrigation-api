@@ -1,9 +1,11 @@
 package com.belediye.parksystems.controller;
 
 import com.belediye.parksystems.dto.CitizenRequestResponseDto;
+import com.belediye.parksystems.dto.CitizenRequestStatusUpdateDto;
 import com.belediye.parksystems.enums.RequestStatus;
 import com.belediye.parksystems.enums.RequestTopic;
 import com.belediye.parksystems.service.CitizenRequestService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,8 +29,12 @@ public class RequestController {
         return citizenRequestService.listRequests(topic, status);
     }
 
-    @PutMapping("/{id}/incelendi")
-    public CitizenRequestResponseDto markReviewed(@PathVariable Long id) {
-        return citizenRequestService.markReviewed(id);
+    // Durum güncelleme: YENI/INCELENIYOR/INCELENDI arasında İKİ YÖNLÜ geçiş, opsiyonel
+    // not ile. Eski tek yönlü "/incelendi" endpoint'i bilinçli olarak KALDIRILDI —
+    // bu, API sözleşmesi (kalıcı veri değil), geriye dönük uyumluluk kısıtı ona
+    // uygulanmıyor; frontend zaten aynı anda güncellendi (bkz. api/requests.js).
+    @PutMapping("/{id}/status")
+    public CitizenRequestResponseDto updateStatus(@PathVariable Long id, @Valid @RequestBody CitizenRequestStatusUpdateDto dto) {
+        return citizenRequestService.updateStatus(id, dto.getStatus(), dto.getNote());
     }
 }

@@ -49,6 +49,13 @@ public class CitizenRequest {
     @Column(nullable = false, length = 20)
     private RequestStatus status = RequestStatus.YENI;
 
+    // Durum değişikliğinde (özellikle "İncelendi" işaretlenirken) personelin
+    // girebileceği OPSİYONEL not. Zorunlu değil — boş bırakılabilir. Her durum
+    // değişikliğinde üzerine yazılır (geçmiş, ayrıca AuditLog'a da işleniyor —
+    // bkz. CitizenRequestService.updateStatus), burada sadece EN GÜNCEL not tutulur.
+    @Column(length = 1000)
+    private String reviewNote;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

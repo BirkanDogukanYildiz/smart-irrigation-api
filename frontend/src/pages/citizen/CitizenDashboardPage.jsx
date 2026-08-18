@@ -7,6 +7,7 @@ import Alert from "../../components/common/Alert";
 import Button from "../../components/common/Button";
 import { getPublicSummary } from "../../api/public";
 import { assetTypeLabel } from "../../utils/assetTypes";
+import { regionDisplayName } from "../../utils/regionDisplay";
 
 // Vatandaş "Ana Sayfa"sı: sadece genel durum özeti (kimlik doğrulama gerektirmez).
 // Eskiden tek bir sayfada özet + talep formu birlikteydi; artık her biri kendi
@@ -101,9 +102,7 @@ export default function CitizenDashboardPage() {
                   fontSize: 13.5,
                 }}
               >
-                <span>
-                  {r.regionName} <span style={{ color: "var(--color-text-faint)" }}>({r.districtName})</span>
-                </span>
+                <span>{regionDisplayName(r)}</span>
                 <strong>{r.assetCount} ekipman</strong>
               </li>
             ))}

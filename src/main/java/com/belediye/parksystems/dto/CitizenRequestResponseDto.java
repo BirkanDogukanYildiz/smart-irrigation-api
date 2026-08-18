@@ -18,5 +18,6 @@ public class CitizenRequestResponseDto {
     private String districtName;
     private String message;
     private RequestStatus status;
+    private String reviewNote;
     private LocalDateTime createdAt;
 }

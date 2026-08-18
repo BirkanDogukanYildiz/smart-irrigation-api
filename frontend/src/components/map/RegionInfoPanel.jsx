@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { zoneColorForRegion } from "../../utils/zoneColors";
+import { regionDisplayName } from "../../utils/regionDisplay";
 
 // Haritadaki bir zone'a (bölge sınırına) tıklanınca açılan bilgi paneli.
 // Cihaz sayıları, MapPage'in zaten yüklü olan `devices` listesinden anlık
@@ -25,9 +26,9 @@ export default function RegionInfoPanel({ region, devices, onClose, onFlyTo }) {
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
         <div>
-          <h3 style={{ margin: 0 }}>{region.regionName}</h3>
+          <h3 style={{ margin: 0 }}>{regionDisplayName(region)}</h3>
           <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--color-text-muted)" }}>
-            {region.districtName} · Bölge No: {region.regionNo} · Bölge ID: {region.id}
+            Bölge No: {region.regionNo} · Bölge ID: {region.id}
           </p>
         </div>
         <button

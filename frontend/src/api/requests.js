@@ -9,7 +9,11 @@ export function listRequests({ topic, status } = {}) {
   return apiCall(`/api/requests${qs ? `?${qs}` : ""}`);
 }
 
-// PUT /api/requests/{id}/incelendi -> CitizenRequestResponseDto (ADMIN+HEADGARDENER)
-export function markRequestReviewed(id) {
-  return apiCall(`/api/requests/${id}/incelendi`, { method: "PUT" });
+// PUT /api/requests/{id}/status { status, note? } -> CitizenRequestResponseDto (ADMIN+HEADGARDENER)
+// status: YENI | INCELENIYOR | INCELENDI — iki yönlü geçiş desteklenir. note opsiyonel.
+export function updateRequestStatus(id, status, note) {
+  return apiCall(`/api/requests/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status, note: note || null }),
+  });
 }

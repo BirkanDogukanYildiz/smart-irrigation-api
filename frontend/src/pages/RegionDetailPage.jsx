@@ -6,6 +6,7 @@ import Loading from "../components/common/Loading";
 import DeviceTable from "../components/devices/DeviceTable";
 import { getRegion } from "../api/regions";
 import { listDevices } from "../api/devices";
+import { regionDisplayName } from "../utils/regionDisplay";
 
 // Modal/panel yerine kalıcı, paylaşılabilir bir URL (/bolgeler/:id). Sadece mevcut
 // backend verisini kullanır (GET /api/region/{id} + GET /api/devices/list filtrelenmiş).
@@ -53,10 +54,11 @@ export default function RegionDetailPage() {
         </Link>
       </div>
 
-      <Section title={region.regionName} subtitle={`Bölge No: ${region.regionNo} · Bölge ID: #${region.id}`}>
+      <Section title={regionDisplayName(region)} subtitle={`Bölge No: ${region.regionNo} · Bölge ID: #${region.id}`}>
         <div className="stat-grid">
           <DetailRow label="İlçe" value={region.districtName} />
-          <DetailRow label="Park Alanı" value={region.irrigationAreaName} />
+          <DetailRow label="Park Adı" value={region.regionName} />
+          <DetailRow label="Sulama Alanı" value={region.irrigationAreaName} />
           <DetailRow label="Sorumlu Personel Yetkilisi" value={region.headGardenerUsername || "Atanmadı"} />
           <DetailRow label="Açıklama" value={region.description || "—"} />
         </div>
