@@ -1,15 +1,19 @@
 package com.belediye.parksystems.controller;
 
+import com.belediye.parksystems.dto.CitizenRequestCreateDto;
+import com.belediye.parksystems.dto.CitizenRequestResponseDto;
+import com.belediye.parksystems.dto.PublicParkDto;
+import com.belediye.parksystems.dto.PublicRegionOptionDto;
 import com.belediye.parksystems.dto.PublicRegionSummaryDto;
 import com.belediye.parksystems.dto.PublicSummaryDto;
 import com.belediye.parksystems.enums.AssetType;
 import com.belediye.parksystems.enums.Status;
 import com.belediye.parksystems.repository.RegionRepository;
 import com.belediye.parksystems.repository.SprinklerInfoRepository;
+import com.belediye.parksystems.service.CitizenRequestService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,7 +21,8 @@ import java.util.Map;
 
 /**
  * Faz 6-A: Vatandaşa açık, kimlik doğrulama GEREKTİRMEYEN şeffaflık uç noktası.
- * SecurityConfig'te "/api/public/**" permitAll olarak işaretlenmiştir.
+ * SecurityConfig'te "/api/public/**" GET permitAll, POST /api/public/requests
+ * ayrıca permitAll olarak işaretlenmiştir.
  *
  * DİKKAT: DashboardController'ın aksine burada SADECE hassas olmayan, toplu/
  * istatistiksel veri döndürülür. Kullanıcı sayısı, cihaz numarası, konum,
@@ -31,6 +36,7 @@ public class PublicController {
 
     private final RegionRepository regionRepository;
     private final SprinklerInfoRepository sprinklerInfoRepository;
+    private final CitizenRequestService citizenRequestService;
 
     @GetMapping("/ozet")
     public PublicSummaryDto getPublicSummary() {
@@ -69,5 +75,40 @@ public class PublicController {
         dto.setRegions(regions);
 
         return dto;
+    }
+
+    // Talep formundaki "Hangi park/bölge ile ilgili?" dropdown'u için — sadece
+    // id + isim, hassas hiçbir alan yok (bkz. PublicRegionOptionDto).
+    @GetMapping("/regions")
+    public List<PublicRegionOptionDto> getPublicRegionOptions() {
+        return citizenRequestService.listPublicRegionOptions();
+    }
+
+    // Vatandaş haritası (Parklar sayfası) için: personel tarafında zone'u (boundary)
+    // ÇİZİLMİŞ bölgeleri döndürür. Aynı Region entity'sini, aynı boundary formatını
+    // kullanır — ayrı bir "park" veri modeli YOK. Zone'u henüz çizilmemiş bölgeler
+    // burada listelenmez (centroid hesaplanacak bir polygon yok, gösterilecek anlamlı
+    // bir konum bulunmuyor); onlar personel tarafında zone çizilince otomatik görünür.
+    @GetMapping("/parks")
+    public List<PublicParkDto> getPublicParks() {
+        return regionRepository.findAll().stream()
+                .filter(r -> r.getBoundary() != null && !r.getBoundary().isBlank())
+                .map(r -> new PublicParkDto(
+                        r.getId(),
+                        r.getRegionName(),
+                        r.getDistrictName(),
+                        r.getDescription(),
+                        r.getBoundary(),
+                        sprinklerInfoRepository.countByRegionId(r.getId())
+                ))
+                .toList();
+    }
+
+    // Vatandaş talep/şikayet oluşturma — kimlik doğrulama GEREKTİRMEZ.
+    // SecurityConfig'te ayrıca (GET /api/public/** kuralından bağımsız olarak)
+    // POST /api/public/requests permitAll işaretlenmiştir.
+    @PostMapping("/requests")
+    public CitizenRequestResponseDto createCitizenRequest(@Valid @RequestBody CitizenRequestCreateDto dto) {
+        return citizenRequestService.createRequest(dto);
     }
 }

@@ -25,6 +25,7 @@ public class SpaWebConfig implements WebMvcConfigurer {
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addViewController("/giris").setViewName("forward:/index.html");
+        registry.addViewController("/giris/personel").setViewName("forward:/index.html");
         registry.addViewController("/harita").setViewName("forward:/index.html");
         // /cihazlar/** ve /bolgeler/** : liste sayfasının yanında artık /cihazlar/:id ve
         // /bolgeler/:id detay sayfaları da var (paylaşılabilir URL'ler); wildcard pattern
@@ -33,6 +34,12 @@ public class SpaWebConfig implements WebMvcConfigurer {
         registry.addViewController("/bolgeler/**").setViewName("forward:/index.html");
         registry.addViewController("/kullanicilar").setViewName("forward:/index.html");
         registry.addViewController("/loglar").setViewName("forward:/index.html");
+        registry.addViewController("/talepler").setViewName("forward:/index.html");
+        // "/seffaflik": eski vatandaş görünümü URL'i, artık /vatandas'a yönleniyor (React
+        // Router tarafında Navigate ile) — burada da forward edilmesi gerekiyor ki direkt
+        // URL/yenilemede 404 yerine index.html yüklenip React Router devralabilsin.
         registry.addViewController("/seffaflik").setViewName("forward:/index.html");
+        registry.addViewController("/vatandas").setViewName("forward:/index.html");
+        registry.addViewController("/vatandas/**").setViewName("forward:/index.html");
     }
 }

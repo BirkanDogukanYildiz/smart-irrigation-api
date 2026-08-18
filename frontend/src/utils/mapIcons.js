@@ -124,3 +124,33 @@ export function deviceSymbolIcon(assetType, status) {
   }
   return iconCache.get(key);
 }
+
+// --- Vatandaş haritası: park pini ---
+// Bilinçli olarak cihaz pinlerinden (yeşil/kırmızı teardrop + tür glifi) VE konum
+// seçici pininden (düz mavi) görsel olarak AYRIŞIYOR: farklı bir renk (orman yeşili,
+// "çalışıyor" durumunu ifade eden başarı yeşilinden farklı bir ton), ağaç/yaprak
+// glifi, ve biraz daha büyük gövde — haritada "bu bir park" mesajı ilk bakışta net
+// olsun, cihaz durumuyla karıştırılmasın diye.
+const PARK_COLOR = "#2f7d5c";
+
+function parkPinSvg() {
+  return `
+    <svg width="34" height="46" viewBox="0 0 34 46" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 0C7.6 0 0 7.6 0 17c0 11.9 17 29 17 29s17-17.1 17-29C34 7.6 26.4 0 17 0z" fill="${PARK_COLOR}"/>
+      <circle cx="17" cy="17" r="12" fill="#ffffff"/>
+      <g fill="${PARK_COLOR}">
+        <circle cx="17" cy="12.5" r="5.2"/>
+        <circle cx="12.2" cy="16.5" r="4.2"/>
+        <circle cx="21.8" cy="16.5" r="4.2"/>
+        <rect x="15.7" y="17.5" width="2.6" height="7" rx="1"/>
+      </g>
+    </svg>`;
+}
+
+export const parkPinIcon = L.divIcon({
+  className: "map-pin-icon",
+  html: parkPinSvg(),
+  iconSize: [34, 46],
+  iconAnchor: [17, 46],
+  popupAnchor: [0, -42],
+});

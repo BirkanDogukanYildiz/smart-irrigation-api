@@ -9,20 +9,10 @@ import { zoneColorForRegion } from "../../utils/zoneColors";
 import { deviceDisplayName } from "../../utils/deviceDisplay";
 import { formatDateTime } from "../../utils/format";
 import { durationSince } from "../../utils/durationSince";
+import { parseBoundary } from "../../utils/geo";
 import "../../styles/map.css";
 
 const ISTANBUL_CENTER = [41.0136, 28.955];
-
-function parseBoundary(boundary) {
-  if (!boundary) return null;
-  try {
-    const coords = JSON.parse(boundary);
-    if (Array.isArray(coords) && coords.length >= 3) return coords;
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * props:

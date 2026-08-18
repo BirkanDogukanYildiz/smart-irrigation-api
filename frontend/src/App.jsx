@@ -3,6 +3,8 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import { RequireAuth, RequireRole } from "./components/common/ProtectedRoute";
 import Layout from "./components/layout/Layout";
+import CitizenLayout from "./components/layout/CitizenLayout";
+import GateChooserPage from "./pages/GateChooserPage";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import DeviceDetailPage from "./pages/DeviceDetailPage";
@@ -11,21 +13,34 @@ import RegionsPage from "./pages/RegionsPage";
 import RegionDetailPage from "./pages/RegionDetailPage";
 import UsersPage from "./pages/UsersPage";
 import LogsPage from "./pages/LogsPage";
-import PublicSummaryPage from "./pages/PublicSummaryPage";
+import RequestsPage from "./pages/RequestsPage";
+import CitizenDashboardPage from "./pages/citizen/CitizenDashboardPage";
+import CitizenParksPage from "./pages/citizen/CitizenParksPage";
+import CitizenRequestPage from "./pages/citizen/CitizenRequestPage";
 import { ROLES } from "./utils/roles";
 
 export default function App() {
   return (
-    // ThemeProvider en dışta: /giris ve /seffaflik gibi kimlik doğrulama
+    // ThemeProvider en dışta: /giris ve /vatandas gibi kimlik doğrulama
     // gerektirmeyen sayfalar da dahil, HER sayfada tema tercihi çalışsın diye.
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/giris" element={<LoginPage />} />
+            {/* Giriş kapısı: "Vatandaş Girişi" / "Personel Girişi" seçimi. RequireAuth
+                giriş yapılmamışsa buraya yönlendiriyor (bkz. ProtectedRoute). */}
+            <Route path="/giris" element={<GateChooserPage />} />
+            <Route path="/giris/personel" element={<LoginPage />} />
 
-            {/* Faz 6-A: login gerektirmeyen, vatandaşa açık şeffaflık sayfası. */}
-            <Route path="/seffaflik" element={<PublicSummaryPage />} />
+            {/* Vatandaş görünümü: kimlik doğrulama gerektirmez. Tek bir kalabalık sayfa
+                yerine kendi amacına odaklanan ayrı sekmelere bölündü (bkz. CitizenLayout).
+                Eski /seffaflik URL'i buraya yönlendiriliyor, eski bookmark/linkler kırılmasın diye. */}
+            <Route path="/vatandas" element={<CitizenLayout />}>
+              <Route index element={<CitizenDashboardPage />} />
+              <Route path="parklar" element={<CitizenParksPage />} />
+              <Route path="talep-olustur" element={<CitizenRequestPage />} />
+            </Route>
+            <Route path="/seffaflik" element={<Navigate to="/vatandas" replace />} />
 
             <Route
               element={
@@ -48,6 +63,16 @@ export default function App() {
                   route'u artık /harita'ya yönleniyor (eski bookmark/linkler kırılmasın). */}
               <Route path="/cihazlar" element={<Navigate to="/harita" replace />} />
 
+              {/* Talepler: vatandaşların oluşturduğu talepler/şikayetler — İşlem Geçmişi
+                  ile aynı yetki seviyesi (ADMIN + HEADGARDENER), backend'de de aynı kısıt var. */}
+              <Route
+                path="/talepler"
+                element={
+                  <RequireRole allow={[ROLES.ADMIN, ROLES.HEADGARDENER]}>
+                    <RequestsPage />
+                  </RequireRole>
+                }
+              />
               <Route
                 path="/loglar"
                 element={

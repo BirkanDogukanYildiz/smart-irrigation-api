@@ -37,6 +37,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 
+    @ExceptionHandler(RequestNotFoundException.class)
+    public ResponseEntity<String> handleRequestNotFound(RequestNotFoundException ex) {
+        log.warn("Talep bulunamadı hatası: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
+
     @ExceptionHandler(UsernameAlreadyExistsException.class)
     public ResponseEntity<String> handleUsernameAlreadyExists(UsernameAlreadyExistsException ex) {
         log.warn("Kullanıcı adı çakışması: {}", ex.getMessage());

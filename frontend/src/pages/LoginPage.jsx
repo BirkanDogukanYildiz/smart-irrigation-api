@@ -76,12 +76,12 @@ export default function LoginPage() {
           </Button>
 
           <div className="login-help">
-            Test hesapları — <code>admin / 1234</code> · <code>bahcivan / 1234</code> ·{" "}
-            <code>bas_bahcivan / 1234</code>
+            Test hesapları — <code>admin / 1234</code> · <code>ahmet.demir / 1234</code> ·{" "}
+            <code>mehmet.yilmaz / 1234</code>
           </div>
 
           <div className="login-help" style={{ marginTop: 8 }}>
-            <Link to="/seffaflik">Vatandaş görünümü →</Link>
+            <Link to="/giris">← Giriş seçimine dön</Link>
           </div>
         </div>
       </form>

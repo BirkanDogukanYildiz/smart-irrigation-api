@@ -32,6 +32,10 @@ public final class AuditActions {
     // Bakım (yeni, gerçek bir özellik olarak eklendi — bkz. MaintenanceService)
     public static final String BAKIM_KAYDI_EKLENDI = "Bakım kaydı eklendi";
 
+    // Vatandaş talebi (kimlik doğrulama gerektirmeden /api/public/requests üzerinden oluşturulur)
+    public static final String TALEP_OLUSTURULDU = "Talep oluşturuldu";
+    public static final String TALEP_INCELENDI = "Talep incelendi";
+
     // Bölge
     public static final String BOLGE_OLUSTURULDU = "Bölge oluşturuldu";
     public static final String BOLGE_GUNCELLENDI = "Bölge güncellendi";
@@ -47,4 +51,5 @@ public final class AuditActions {
     public static final String KAYNAK_CIHAZ = "CIHAZ";
     public static final String KAYNAK_BOLGE = "BOLGE";
     public static final String KAYNAK_KULLANICI = "KULLANICI";
+    public static final String KAYNAK_TALEP = "TALEP";
 }

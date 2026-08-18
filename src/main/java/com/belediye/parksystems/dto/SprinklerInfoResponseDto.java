@@ -25,5 +25,6 @@ public class SprinklerInfoResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime statusChangedAt;
     private String faultType;
+    private String photoBase64;
     private String lastUpdatedBy;
 }

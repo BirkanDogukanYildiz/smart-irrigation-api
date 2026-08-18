@@ -60,6 +60,12 @@ public class SecurityConfig {
 
                         // Faz 6-A: Vatandaşa açık, kimlik doğrulama gerektirmeyen şeffaflık özeti.
                         .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+                        // Vatandaş talep/şikayet oluşturma da kimlik doğrulama gerektirmez.
+                        .requestMatchers(HttpMethod.POST, "/api/public/requests").permitAll()
+
+                        // Vatandaş taleplerini görüntüleme/inceleme: İşlem Geçmişi (loglar) ile
+                        // aynı yetki seviyesi — sadece ADMIN + HEADGARDENER.
+                        .requestMatchers("/api/requests/**").hasAnyRole("ADMIN", "HEADGARDENER")
 
                         .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole("ADMIN", "GARDENER", "HEADGARDENER")
                         .requestMatchers("/api/logs/**").hasAnyRole("ADMIN", "HEADGARDENER")
@@ -80,7 +86,10 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // React Router (client-side routing) sayfaları
-                        .requestMatchers("/giris", "/harita", "/cihazlar/**", "/bolgeler/**", "/kullanicilar", "/loglar", "/seffaflik")
+                        .requestMatchers(
+                                "/giris", "/giris/personel", "/harita", "/cihazlar/**", "/bolgeler/**",
+                                "/kullanicilar", "/loglar", "/seffaflik", "/vatandas", "/vatandas/**", "/talepler"
+                        )
                         .permitAll()
 
                         // Kullanıcı yönetimi sadece ADMIN

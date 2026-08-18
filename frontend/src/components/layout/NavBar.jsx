@@ -11,6 +11,7 @@ export default function NavBar() {
     { to: "/", label: "Anasayfa", visible: true },
     { to: "/bolgeler", label: "Bölgeler", visible: isAdmin(role) },
     { to: "/harita", label: "Harita ve Cihazlar", visible: true },
+    { to: "/talepler", label: "Talepler", visible: isManager(role) },
     { to: "/kullanicilar", label: "Kullanıcılar", visible: isAdmin(role) },
     { to: "/loglar", label: "İşlem Geçmişi", visible: isManager(role) },
   ].filter((l) => l.visible);

@@ -19,4 +19,8 @@ public class SprinklerStatusUpdateDto {
     // Opsiyonel: arıza raporunda gösterilecek arıza türü (ör. "Vana Arızası").
     // Boş bırakılabilir, zorunlu değil.
     private String faultType;
+
+    // Opsiyonel: arızayı gösteren fotoğraf, data-URL formatında (ör. "data:image/jpeg;base64,...").
+    // Boş/null gönderilirse mevcut fotoğraf (varsa) korunur — sadece WORKING'e çekilince temizlenir.
+    private String photoBase64;
 }

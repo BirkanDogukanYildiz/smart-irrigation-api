@@ -70,6 +70,14 @@ public class SprinklerInfo {
     @Column(length = 100)
     private String faultType;
 
+    // Arıza bildirirken opsiyonel olarak eklenebilen fotoğraf. Ayrı bir dosya depolama/
+    // static sunucu kurulumuna gerek duymamak için data-URL (base64) olarak DB'de
+    // TEXT sütununda tutuluyor — bu ölçekte (belediye içi arıza takibi) yeterli, S3/disk
+    // depolama gibi ek altyapı bilinçli olarak eklenmedi. description/faultType ile aynı
+    // yaşam döngüsüne sahip: cihaz düzelince (WORKING) temizlenir.
+    @Column(columnDefinition = "TEXT")
+    private String photoBase64;
+
     // Durumu en son değiştiren kullanıcının adı (JWT authentication'dan alınır).
     // "İlgili personel" bilgisini fake veri üretmeden, gerçek işlem sahibinden gösterebilmek için.
     @Column(length = 50)

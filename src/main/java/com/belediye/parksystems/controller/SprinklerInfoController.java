@@ -62,7 +62,7 @@ public class SprinklerInfoController {
     // arıza türünü (opsiyonel) günceller.
     @PutMapping("/status/{id}")
     public SprinklerInfoResponseDto deviceStatusUpdate(@PathVariable Long id, @Valid @RequestBody SprinklerStatusUpdateDto statusDto) {
-        return sprinklerInfoService.updateStatus(id, statusDto.getStatus(), statusDto.getDescription(), statusDto.getFaultType());
+        return sprinklerInfoService.updateStatus(id, statusDto.getStatus(), statusDto.getDescription(), statusDto.getFaultType(), statusDto.getPhotoBase64());
     }
     @GetMapping("/device-info/{id}")
     public SprinklerInfoResponseDto deviceInfo(@PathVariable Long id) {

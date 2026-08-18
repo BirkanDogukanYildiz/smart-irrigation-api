@@ -75,6 +75,7 @@ public class SprinklerInfoService {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setStatusChangedAt(entity.getStatusChangedAt());
         dto.setFaultType(entity.getFaultType());
+        dto.setPhotoBase64(entity.getPhotoBase64());
         dto.setLastUpdatedBy(entity.getLastUpdatedBy());
         return dto;
     }
@@ -196,7 +197,7 @@ public class SprinklerInfoService {
     }
 
     @Transactional
-    public SprinklerInfoResponseDto updateStatus(Long id, Status newStatus, String description, String faultType) {
+    public SprinklerInfoResponseDto updateStatus(Long id, Status newStatus, String description, String faultType, String photoBase64) {
         SprinklerInfo device = sprinklerInfoRepository.findById(id)
                 .orElseThrow(() -> new DeviceNotFoundException(id));
         if (newStatus == Status.FAULTY && (description == null || description.isBlank())) {
@@ -209,6 +210,15 @@ public class SprinklerInfoService {
         device.setStatus(newStatus);
         device.setDescription(newStatus == Status.FAULTY ? description : null);
         device.setFaultType(newStatus == Status.FAULTY ? faultType : null);
+        // Fotoğraf opsiyonel: yeni bir fotoğraf gönderilmediyse (arıza güncellenirken/kapatılırken
+        // frontend'den boş geldiyse) mevcut fotoğrafı SİLMİYORUZ — sadece cihaz onarılınca temizleniyor.
+        if (newStatus == Status.FAULTY) {
+            if (photoBase64 != null && !photoBase64.isBlank()) {
+                device.setPhotoBase64(photoBase64);
+            }
+        } else {
+            device.setPhotoBase64(null);
+        }
         device.setStatusChangedAt(LocalDateTime.now());
         device.setLastUpdatedBy(getCurrentUsername());
 
