@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Section from "../../components/common/Section";
+import PageHeader from "../../components/common/PageHeader";
 import Alert from "../../components/common/Alert";
 import Button from "../../components/common/Button";
 import { getPublicRegionOptions, createCitizenRequest } from "../../api/public";
@@ -64,19 +65,40 @@ export default function CitizenRequestPage() {
   }
 
   return (
-    <Section
-      title="Talep Oluştur"
-      subtitle="Bir arıza bildirmek, bakım talep etmek veya öneri/şikayetinizi iletmek için aşağıdaki formu doldurun."
-    >
-      {submitted ? (
-        <>
-          <Alert type="success">Talebiniz başarıyla alındı. İlgili ekip en kısa sürede inceleyecektir.</Alert>
-          <Button variant="secondary" onClick={() => setSubmitted(false)} style={{ marginTop: 12 }}>
-            Yeni Talep Oluştur
-          </Button>
-        </>
-      ) : (
-        <form onSubmit={handleSubmit} style={{ maxWidth: 480 }}>
+    <>
+      <PageHeader
+        title="Talep Oluştur"
+        subtitle="Bir arıza bildirmek, bakım talep etmek veya öneri/şikayetinizi iletmek için aşağıdaki formu doldurun."
+      />
+
+      <Section>
+        {submitted ? (
+          <div style={{ textAlign: "center", padding: "var(--space-5) 0" }}>
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: "50%",
+                background: "var(--color-success-bg)",
+                color: "var(--color-success)",
+                fontSize: 24,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto var(--space-4)",
+              }}
+              aria-hidden="true"
+            >
+              ✓
+            </div>
+            <h3 style={{ marginBottom: 6 }}>Talebiniz alındı</h3>
+            <Alert type="success">İlgili ekip talebinizi en kısa sürede inceleyecektir.</Alert>
+            <Button variant="secondary" onClick={() => setSubmitted(false)} style={{ marginTop: 16 }}>
+              Yeni Talep Oluştur
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ maxWidth: 480 }}>
           <Alert type="error">{formError}</Alert>
 
           <div className="form-field" style={{ marginBottom: 14 }}>
@@ -141,7 +163,8 @@ export default function CitizenRequestPage() {
             {submitting ? "Gönderiliyor..." : "Talebi Gönder"}
           </Button>
         </form>
-      )}
-    </Section>
+        )}
+      </Section>
+    </>
   );
 }

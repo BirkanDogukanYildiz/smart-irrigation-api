@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Section from "../../components/common/Section";
+import PageHeader from "../../components/common/PageHeader";
 import Alert from "../../components/common/Alert";
 import Loading from "../../components/common/Loading";
 import EmptyState from "../../components/common/EmptyState";
@@ -21,40 +22,79 @@ export default function CitizenParksPage() {
   }, []);
 
   return (
-    <Section
-      title="Parklar"
-      subtitle="Sınırları personel tarafından haritaya işlenmiş park alanları. Her pin, ilgili parkın konumunu gösterir."
-    >
+    <>
+      <PageHeader
+        title="Parklar"
+        subtitle="Sınırları personel tarafından haritaya işlenmiş park alanları. Her pin, ilgili parkın konumunu gösterir."
+      />
+
       <Alert type="error">{error}</Alert>
       {!parks && !error && <Loading label="Parklar yükleniyor..." />}
-
-      {parks && parks.length === 0 && (
-        <EmptyState>Henüz haritada işaretlenmiş bir park alanı yok.</EmptyState>
-      )}
+      {parks && parks.length === 0 && <EmptyState>Henüz haritada işaretlenmiş bir park alanı yok.</EmptyState>}
 
       {parks && parks.length > 0 && (
         <>
-          <CitizenParkMap parks={parks} />
+          <Section>
+            <CitizenParkMap parks={parks} />
+          </Section>
 
-          <ul style={{ listStyle: "none", padding: 0, margin: "var(--space-4) 0 0" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+              gap: "var(--space-4)",
+            }}
+          >
             {parks.map((p) => (
-              <li
+              <div
                 key={p.id}
                 style={{
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "var(--radius-md)",
+                  boxShadow: "var(--shadow-sm)",
+                  padding: "var(--space-4)",
                   display: "flex",
-                  justifyContent: "space-between",
-                  padding: "10px 0",
-                  borderBottom: "1px solid var(--color-border)",
-                  fontSize: 13.5,
+                  flexDirection: "column",
+                  gap: 6,
                 }}
               >
-                <span>{regionDisplayName(p)}</span>
-                <strong>{p.assetCount} ekipman</strong>
-              </li>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--color-primary-light)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 18,
+                    marginBottom: 4,
+                  }}
+                  aria-hidden="true"
+                >
+                  🌳
+                </div>
+                <h3 style={{ margin: 0 }}>{regionDisplayName(p)}</h3>
+                {p.description && (
+                  <p style={{ fontSize: 13, color: "var(--color-text-muted)", margin: 0 }}>{p.description}</p>
+                )}
+                <div
+                  style={{
+                    marginTop: "auto",
+                    paddingTop: "var(--space-3)",
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  {p.assetCount} ekipman
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         </>
       )}
-    </Section>
+    </>
   );
 }

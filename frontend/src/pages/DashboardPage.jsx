@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Section from "../components/common/Section";
+import PageHeader from "../components/common/PageHeader";
 import StatItem from "../components/common/StatItem";
 import Loading from "../components/common/Loading";
 import ProportionBar from "../components/charts/ProportionBar";
@@ -9,6 +10,7 @@ import { listLogs } from "../api/logs";
 import { computeDailyFaultTrend } from "../utils/faultTrend";
 import { useAuth } from "../context/AuthContext";
 import { isManager } from "../utils/roles";
+import { regionDisplayName } from "../utils/regionDisplay";
 
 const FAULT_TREND_DAYS = 14;
 
@@ -53,6 +55,8 @@ export default function DashboardPage() {
 
   return (
     <>
+      <PageHeader title="Anasayfa" subtitle="Park ve bahçe ekipmanlarının güncel durumuna genel bakış." />
+
       <Section title="Genel Bakış" subtitle="Sulama sisteminin güncel durumu.">
         {summary ? (
           <div className="stat-grid">
@@ -84,7 +88,7 @@ export default function DashboardPage() {
           {summary.regionBreakdown.map((r) => (
             <ProportionBar
               key={r.regionId}
-              label={`${r.regionName} (${r.districtName})`}
+              label={regionDisplayName(r)}
               segments={[
                 { name: "Çalışıyor", value: r.workingDevices, color: "var(--color-success)" },
                 { name: "Arızalı", value: r.faultyDevices, color: "var(--color-danger)" },

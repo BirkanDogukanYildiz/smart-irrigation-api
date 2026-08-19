@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import Section from "../components/common/Section";
+import PageHeader from "../components/common/PageHeader";
 import Alert from "../components/common/Alert";
 import Loading from "../components/common/Loading";
 import DeviceTable from "../components/devices/DeviceTable";
@@ -49,12 +50,14 @@ export default function RegionDetailPage() {
   return (
     <>
       <div style={{ marginBottom: "var(--space-3)" }}>
-        <Link to="/bolgeler" style={{ color: "var(--color-primary)", fontSize: 13.5 }}>
+        <Link to="/bolgeler" style={{ color: "var(--color-primary)", fontSize: 13.5, fontWeight: 600 }}>
           ← Bölgeler listesine dön
         </Link>
       </div>
 
-      <Section title={regionDisplayName(region)} subtitle={`Bölge No: ${region.regionNo} · Bölge ID: #${region.id}`}>
+      <PageHeader title={regionDisplayName(region)} subtitle={`Bölge No: ${region.regionNo} · Bölge ID: #${region.id}`} />
+
+      <Section title="Park Bilgileri">
         <div className="stat-grid">
           <DetailRow label="İlçe" value={region.districtName} />
           <DetailRow label="Park Adı" value={region.regionName} />
@@ -85,7 +88,17 @@ export default function RegionDetailPage() {
 
 function DetailRow({ label, value, tone }) {
   return (
-    <div style={{ paddingLeft: "var(--space-4)", borderLeft: `3px solid var(--color-border)` }}>
+    <div
+      style={{
+        padding: "var(--space-4)",
+        background: "var(--color-bg)",
+        border: "1px solid var(--color-border)",
+        borderRadius: "var(--radius-md)",
+        borderLeft: `3px solid ${
+          tone === "danger" ? "var(--color-danger)" : tone === "success" ? "var(--color-success)" : "var(--color-border-strong)"
+        }`,
+      }}
+    >
       <div
         style={{
           fontSize: 14.5,
@@ -95,7 +108,7 @@ function DetailRow({ label, value, tone }) {
       >
         {value}
       </div>
-      <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 2 }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)", marginTop: 4 }}>{label}</div>
     </div>
   );
 }

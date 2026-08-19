@@ -1,5 +1,6 @@
 import { formatDateTime } from "../../utils/format";
 import { actionColors, resourceLabel } from "../../utils/auditActions";
+import { roleLabel } from "../../utils/roles";
 import Button from "../common/Button";
 
 export default function LogDetailModal({ log, onClose }) {
@@ -73,7 +74,7 @@ export default function LogDetailModal({ log, onClose }) {
         <div style={{ padding: "var(--space-5)" }}>
           <Row label="Tarih/Saat" value={formatDateTime(log.timestamp)} />
           <Row label="Kullanıcı" value={log.username} />
-          <Row label="Kullanıcı Rolü" value={log.userRole || "—"} />
+          <Row label="Kullanıcı Rolü" value={log.userRole ? roleLabel(log.userRole) : "—"} />
           <Row label="Kaynak Türü" value={resourceLabel(log.resourceType)} />
           <Row label="Kaynak ID" value={log.resourceId != null ? `#${log.resourceId}` : "—"} />
           <Row label="Açıklama" value={log.details} />

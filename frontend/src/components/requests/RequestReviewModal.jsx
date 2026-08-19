@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Button from "../common/Button";
 import "../../styles/form.css";
 
@@ -9,6 +9,16 @@ import "../../styles/form.css";
 export default function RequestReviewModal({ request, onConfirm, onClose }) {
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Modal parent'ta koşulsuz render ediliyor (component hiç unmount olmuyor), bu
+  // yüzden farklı bir talep için tekrar açıldığında önceki notun kalıntısı
+  // görünmesin diye burada sıfırlıyoruz.
+  useEffect(() => {
+    if (request) {
+      setNote("");
+      setSubmitting(false);
+    }
+  }, [request]);
 
   if (!request) return null;
 

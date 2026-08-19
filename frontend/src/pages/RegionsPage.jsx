@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Section from "../components/common/Section";
+import PageHeader from "../components/common/PageHeader";
 import Alert from "../components/common/Alert";
 import RegionForm from "../components/regions/RegionForm";
 import RegionTable from "../components/regions/RegionTable";
@@ -68,8 +69,10 @@ export default function RegionsPage() {
 
   return (
     <>
+      <PageHeader title="Bölgeler" subtitle="Park alanlarını, sorumlu personeli ve haritadaki sınırlarını yönetin." />
+
       <Section
-        title="Bölgeler"
+        title="Bölge Listesi"
         actions={
           regions && regions.length > 0 ? (
             <input

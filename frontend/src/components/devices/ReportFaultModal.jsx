@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { deviceDisplayName } from "../../utils/deviceDisplay";
 import { FAULT_TYPES, OTHER_FAULT_TYPE } from "../../utils/faultTypes";
 import { compressImageToDataUrl } from "../../utils/imageCompress";
@@ -19,6 +19,27 @@ export default function ReportFaultModal({ device, onSubmit, onClose }) {
   const [photoProcessing, setPhotoProcessing] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // BUG DÜZELTMESİ: Bu modal, parent'ta koşulsuz render ediliyor (sadece `device`
+  // null olunca içeride "return null" ile gizleniyor) — yani component ASLA
+  // unmount olmuyor, state'i (submitting dahil) kapanışlar arası KORUNUYORDU.
+  // Önceki halinde başarılı bir gönderimden sonra submitting=true hiç false'a
+  // dönmüyordu (sadece catch bloğunda sıfırlanıyordu) — bu yüzden bir arıza
+  // bildirdikten sonra modal ikinci kez açıldığında hem "Arızayı Bildir" hem
+  // "İptal" butonu (ikisi de disabled={submitting}) kalıcı olarak devre dışı
+  // kalıyor, kullanıcı modalı kapatamıyor bile ("donma"). Çözüm: her yeni cihaz
+  // için (veya modal her açılışta) TÜM form state'ini burada sıfırlıyoruz.
+  useEffect(() => {
+    if (device) {
+      setFaultType(FAULT_TYPES[0]);
+      setCustomFaultType("");
+      setDescription("");
+      setPhotoDataUrl(null);
+      setPhotoProcessing(false);
+      setError("");
+      setSubmitting(false);
+    }
+  }, [device]);
 
   if (!device) return null;
 
@@ -56,6 +77,10 @@ export default function ReportFaultModal({ device, onSubmit, onClose }) {
     setSubmitting(true);
     try {
       await onSubmit(description.trim(), resolvedFaultType, photoDataUrl);
+      // Başarılı: submitting'i BİLİNÇLİ OLARAK burada da false'a çekiyoruz (üstteki
+      // useEffect zaten bir sonraki açılışta sıfırlayacak olsa da, parent'ın
+      // `device`'ı hemen null yapmadığı bir senaryoya karşı ek güvenlik).
+      setSubmitting(false);
     } catch (err) {
       setError(err.message);
       setSubmitting(false);

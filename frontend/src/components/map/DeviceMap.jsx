@@ -43,6 +43,7 @@ const DeviceMap = forwardRef(function DeviceMap(
     onRemove,
     onEmptyClick,
     onViewFaultReport,
+    onReportFault,
     regions = [],
     showZones = true,
     selectedRegionId = null,
@@ -233,6 +234,19 @@ const DeviceMap = forwardRef(function DeviceMap(
         popupEl.appendChild(reportBtn);
       }
 
+      // Pin üzerinden doğrudan arıza bildirme: sadece ÇALIŞIYOR durumundaki cihazlarda
+      // ve sadece manager'a (ADMIN+HEADGARDENER) görünür — mevcut "Arıza Bildir" akışıyla
+      // (ReportFaultModal) aynı, tek fark tetiklendiği yer (buton listesi yerine pin popup'ı).
+      if (d.status === "WORKING" && isManager && onReportFault) {
+        const faultBtn = document.createElement("button");
+        faultBtn.textContent = "Arıza Bildir";
+        faultBtn.className = "btn btn-danger btn-sm";
+        faultBtn.style.width = "100%";
+        faultBtn.style.marginTop = "8px";
+        faultBtn.onclick = () => onReportFault(d);
+        popupEl.appendChild(faultBtn);
+      }
+
       if (isManager && onRemove) {
         const removeBtn = document.createElement("button");
         removeBtn.textContent = "Ekipmanı Kaldır";
@@ -250,7 +264,7 @@ const DeviceMap = forwardRef(function DeviceMap(
     map.addLayer(clusterGroup);
     clusterRef.current = clusterGroup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [devices, filter, isManager, assetTypeFilter]);
+  }, [devices, filter, isManager, assetTypeFilter, onReportFault]);
 
   // ---- Bölge zone katmanı (saydam çokgenler, tıklanabilir, seçili olan vurgulanır) ----
   useEffect(() => {

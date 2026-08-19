@@ -4,7 +4,6 @@ import Section from "../../components/common/Section";
 import StatItem from "../../components/common/StatItem";
 import Loading from "../../components/common/Loading";
 import Alert from "../../components/common/Alert";
-import Button from "../../components/common/Button";
 import { getPublicSummary } from "../../api/public";
 import { assetTypeLabel } from "../../utils/assetTypes";
 import { regionDisplayName } from "../../utils/regionDisplay";
@@ -24,37 +23,50 @@ export default function CitizenDashboardPage() {
 
   return (
     <>
-      <Section
-        title="Genel Durum"
-        subtitle="Sistemdeki park/bahçe ekipmanlarının anlık, herkese açık özeti."
-        actions={
-          <Link to="/vatandas/talep-olustur">
-            <Button variant="primary" size="sm">
-              Talep Oluştur
-            </Button>
-          </Link>
-        }
+      {/* --- Karşılama şeridi: kurumsal, sade — büyük fotoğraf/gradient yok, sadece
+          accent renginin ince bir dokunuşu ve net bir mesaj. --- */}
+      <div
+        style={{
+          background: "linear-gradient(180deg, var(--color-primary-light), var(--color-surface))",
+          border: "1px solid var(--color-border)",
+          borderRadius: "var(--radius-lg)",
+          padding: "var(--space-6) var(--space-5)",
+          marginBottom: "var(--space-5)",
+        }}
       >
-        {error && <Alert type="error">Veriler şu anda yüklenemedi. Lütfen daha sonra tekrar deneyin.</Alert>}
-        {!summary && !error && <Loading label="Yükleniyor..." />}
+        <h2 className="page-title">Park ve Bahçeler Vatandaş Portalı</h2>
+        <p className="page-subtitle" style={{ maxWidth: 560 }}>
+          İstanbul genelindeki parklardaki sulama, aydınlatma ve diğer ekipmanların güncel durumunu görüntüleyin;
+          bir sorun fark ettiğinizde birkaç adımda talep oluşturun.
+        </p>
+        <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-5)", flexWrap: "wrap" }}>
+          <Link to="/vatandas/parklar" className="btn btn-primary btn-md">
+            Parkları Görüntüle
+          </Link>
+          <Link to="/vatandas/talep-olustur" className="btn btn-secondary btn-md">
+            Talep Oluştur
+          </Link>
+        </div>
+      </div>
 
-        {summary && (
-          <>
-            <p style={{ marginBottom: "var(--space-5)", fontSize: 15, color: "var(--color-text)" }}>
-              Şu anda <strong>{summary.totalRegions}</strong> park/bahçe alanında{" "}
-              <strong>{summary.totalAssets}</strong> ekipman izleniyor, bunların{" "}
-              <strong>%{summary.workingRatioPercent}</strong>'i çalışır durumda.
-            </p>
+      {error && <Alert type="error">Veriler şu anda yüklenemedi. Lütfen daha sonra tekrar deneyin.</Alert>}
+      {!summary && !error && <Loading label="Yükleniyor..." />}
 
-            <div className="stat-grid">
-              <StatItem label="Toplam Ekipman" value={summary.totalAssets} tone="primary" />
-              <StatItem label="Çalışır Durumda" value={summary.workingCount} tone="success" />
-              <StatItem label="Arızalı" value={summary.faultyCount} tone="danger" />
-              <StatItem label="Bölge Sayısı" value={summary.totalRegions} />
-            </div>
-          </>
-        )}
-      </Section>
+      {summary && (
+        <Section title="Genel Durum" subtitle="Sistemdeki park/bahçe ekipmanlarının anlık, herkese açık özeti.">
+          <div className="stat-grid">
+            <StatItem label="Toplam Ekipman" value={summary.totalAssets} tone="primary" />
+            <StatItem label="Çalışır Durumda" value={summary.workingCount} tone="success" />
+            <StatItem label="Arızalı" value={summary.faultyCount} tone="danger" />
+            <StatItem label="Park Alanı Sayısı" value={summary.totalRegions} />
+          </div>
+          <p style={{ marginTop: "var(--space-5)", fontSize: 13.5 }}>
+            Şu anda <strong>{summary.totalRegions}</strong> park/bahçe alanındaki{" "}
+            <strong>{summary.totalAssets}</strong> ekipmanın <strong>%{summary.workingRatioPercent}</strong>'i
+            çalışır durumda.
+          </p>
+        </Section>
+      )}
 
       {summary?.assetTypeBreakdown && Object.keys(summary.assetTypeBreakdown).length > 0 && (
         <Section title="Ekipman Türüne Göre Dağılım">
@@ -80,13 +92,11 @@ export default function CitizenDashboardPage() {
 
       {summary?.regions && summary.regions.length > 0 && (
         <Section
-          title="Bölgeler"
-          subtitle="Park alanlarını haritada görmek için Parklar sekmesine geçebilirsiniz."
+          title="Park Alanları"
+          subtitle="Konumlarını haritada görmek için Parklar sekmesine geçebilirsiniz."
           actions={
-            <Link to="/vatandas/parklar">
-              <Button variant="secondary" size="sm">
-                Parklar →
-              </Button>
+            <Link to="/vatandas/parklar" className="btn btn-secondary btn-sm">
+              Parklar →
             </Link>
           }
         >

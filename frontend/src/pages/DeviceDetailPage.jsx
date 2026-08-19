@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import Section from "../components/common/Section";
+import PageHeader from "../components/common/PageHeader";
 import Alert from "../components/common/Alert";
 import Loading from "../components/common/Loading";
 import StatusBadge from "../components/common/StatusBadge";
@@ -43,12 +44,12 @@ export default function DeviceDetailPage() {
   return (
     <>
       <div style={{ marginBottom: "var(--space-3)" }}>
-        <Link to="/cihazlar" style={{ color: "var(--color-primary)", fontSize: 13.5 }}>
+        <Link to="/cihazlar" style={{ color: "var(--color-primary)", fontSize: 13.5, fontWeight: 600 }}>
           ← Cihazlar listesine dön
         </Link>
       </div>
 
-      <Section
+      <PageHeader
         title={deviceDisplayName(device)}
         subtitle={`Cihaz ID: #${device.id}`}
         actions={
@@ -58,7 +59,9 @@ export default function DeviceDetailPage() {
             {device.status === "FAULTY" && <FaultAgeBadge since={device.statusChangedAt} />}
           </div>
         }
-      >
+      />
+
+      <Section title="Ekipman Bilgileri">
         <div className="stat-grid">
           <DetailRow label="Park" value={device.region ? regionDisplayName(device.region) : "—"} />
           <DetailRow label="Ekipman No" value={`#${device.deviceNo}`} />
@@ -125,7 +128,15 @@ export default function DeviceDetailPage() {
 
 function DetailRow({ label, value, tone }) {
   return (
-    <div style={{ paddingLeft: "var(--space-4)", borderLeft: `3px solid var(--color-border)` }}>
+    <div
+      style={{
+        padding: "var(--space-4)",
+        background: "var(--color-bg)",
+        border: "1px solid var(--color-border)",
+        borderRadius: "var(--radius-md)",
+        borderLeft: `3px solid ${tone === "danger" ? "var(--color-danger)" : "var(--color-border-strong)"}`,
+      }}
+    >
       <div
         style={{
           fontSize: 14.5,
@@ -135,7 +146,7 @@ function DetailRow({ label, value, tone }) {
       >
         {value ?? "—"}
       </div>
-      <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 2 }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)", marginTop: 4 }}>{label}</div>
     </div>
   );
 }

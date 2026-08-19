@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Section from "../components/common/Section";
+import PageHeader from "../components/common/PageHeader";
 import Alert from "../components/common/Alert";
 import PaginationControls from "../components/common/PaginationControls";
 import UserForm from "../components/users/UserForm";
@@ -79,8 +80,10 @@ export default function UsersPage() {
 
   return (
     <>
+      <PageHeader title="Kullanıcılar" subtitle="Personel hesaplarını ve rol atamalarını yönetin." />
+
       <Section
-        title="Kullanıcılar"
+        title="Kullanıcı Listesi"
         actions={
           <div style={{ display: "flex", gap: 8 }}>
             <input

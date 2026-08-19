@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Section from "../components/common/Section";
+import PageHeader from "../components/common/PageHeader";
 import Alert from "../components/common/Alert";
 import RequestTable from "../components/requests/RequestTable";
 import RequestReviewModal from "../components/requests/RequestReviewModal";
@@ -61,9 +62,11 @@ export default function RequestsPage() {
 
   return (
     <>
+      <PageHeader title="Talepler" subtitle="Vatandaşların /vatandas üzerinden oluşturduğu talep ve şikayetler." />
+
       <Section
-        title="Talepler"
-        subtitle="Vatandaşların /vatandas üzerinden oluşturduğu talep ve şikayetler."
+        title="Talep Listesi"
+        subtitle={null}
         actions={
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <select value={topicFilter} onChange={(e) => setTopicFilter(e.target.value)}>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Section from "../components/common/Section";
+import PageHeader from "../components/common/PageHeader";
 import Alert from "../components/common/Alert";
 import Button from "../components/common/Button";
 import PaginationControls from "../components/common/PaginationControls";
@@ -96,15 +97,17 @@ export default function LogsPage() {
   }
 
   return (
-    <Section
-      title="İşlem Geçmişi"
-      subtitle="Sistemde yapılan işlemlerin ayrıntılı kaydı."
-      actions={
-        <Button size="sm" variant="secondary" onClick={handleExport}>
-          Dışa Aktar (CSV)
-        </Button>
-      }
-    >
+    <>
+      <PageHeader title="İşlem Geçmişi" subtitle="Sistemde yapılan işlemlerin ayrıntılı kaydı." />
+
+      <Section
+        title="Kayıtlar"
+        actions={
+          <Button size="sm" variant="secondary" onClick={handleExport}>
+            Dışa Aktar (CSV)
+          </Button>
+        }
+      >
       <Alert type="error">{error}</Alert>
 
       <div className="form-grid" style={{ marginBottom: "var(--space-4)" }}>
@@ -178,6 +181,7 @@ export default function LogsPage() {
       <PaginationControls page={page} totalPages={totalPages} totalElements={totalElements} onPageChange={setPage} />
 
       <LogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
-    </Section>
+      </Section>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import Button from "../common/Button";
 import LocationPicker from "./LocationPicker";
 import { createDevice } from "../../api/devices";
 import { ASSET_TYPES, assetTypeLabel } from "../../utils/assetTypes";
+import { regionDisplayName } from "../../utils/regionDisplay";
 import "../../styles/form.css";
 
 export default function DeviceForm({
@@ -88,7 +89,7 @@ export default function DeviceForm({
               <option value="">— Bölge seçin —</option>
               {regions.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.regionName} ({r.districtName})
+                  {regionDisplayName(r)}
                 </option>
               ))}
             </select>

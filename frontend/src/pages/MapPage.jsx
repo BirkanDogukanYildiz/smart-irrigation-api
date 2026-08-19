@@ -17,6 +17,7 @@ import { isManager, isAdmin } from "../utils/roles";
 import { zoneColorForRegion } from "../utils/zoneColors";
 import { ASSET_TYPES, assetTypeLabel } from "../utils/assetTypes";
 import { regionDisplayName } from "../utils/regionDisplay";
+import PageHeader from "../components/common/PageHeader";
 import "../styles/map.css";
 
 const PAGE_SIZE = 20;
@@ -45,10 +46,13 @@ export default function MapPage() {
   const [drawingRegionId, setDrawingRegionId] = useState(null);
   const [drawPoints, setDrawPoints] = useState([]);
   const [savingBoundary, setSavingBoundary] = useState(false);
-  // Çizim BAŞLAMADAN önceki seçim akışı: "İlçe seç → Park seç → Çiz". Eskiden tüm
-  // bölgeler tek bir satırda yan yana buton olarak listeleniyordu (çok sayıda bölgede
-  // dağınık/okunaksız oluyordu) — artık iki aşamalı, kademeli (cascading) bir seçim var.
+  // Çizim BAŞLAMADAN önceki seçim akışı: "İlçe seç → Bölge seç → Park Alanı seç → Çiz".
+  // Bir "Bölge" (regionName) aynı ilçe içinde BİRDEN FAZLA park alanına (Region satırı,
+  // her biri kendi irrigationAreaName/boundary/cihazlarıyla) karşılık gelebilir — bu
+  // yüzden üçüncü bir seviye eklendi. Eskiden tüm bölgeler tek bir satırda yan yana
+  // buton olarak listeleniyordu (çok sayıda bölgede dağınık/okunaksız oluyordu).
   const [drawDistrict, setDrawDistrict] = useState("");
+  const [drawRegionName, setDrawRegionName] = useState("");
   const [drawPickRegionId, setDrawPickRegionId] = useState("");
 
   // Haritaya tıklayarak hızlı ekipman ekleme: artık window.prompt ile numara YAZDIRMIYORUZ,
@@ -239,6 +243,7 @@ export default function MapPage() {
     setDrawingRegionId(null);
     setDrawPoints([]);
     setDrawDistrict("");
+    setDrawRegionName("");
     setDrawPickRegionId("");
   }
 
@@ -258,6 +263,7 @@ export default function MapPage() {
       setDrawingRegionId(null);
       setDrawPoints([]);
       setDrawDistrict("");
+      setDrawRegionName("");
       setDrawPickRegionId("");
     } catch (e) {
       window.alert("Bölge sınırı kaydedilemedi: " + e.message);
@@ -305,13 +311,46 @@ export default function MapPage() {
   const drawingRegion = regions.find((r) => r.id === drawingRegionId) || null;
   const selectedRegion = regions.find((r) => r.id === selectedRegionId) || null;
 
-  // Çizim seçim akışı için: mevcut bölgelerdeki benzersiz ilçeler, ve seçili ilçedeki parklar.
+  // Çizim seçim akışı için: mevcut bölgelerdeki benzersiz ilçeler, seçili ilçedeki
+  // benzersiz bölge (regionName) adları, ve seçili ilçe+bölge kombinasyonundaki
+  // somut park alanları (her biri ayrı bir Region satırı — kendi irrigationAreaName/
+  // boundary/cihazlarıyla).
   const drawDistricts = [...new Set(regions.map((r) => r.districtName))].sort((a, b) => a.localeCompare(b, "tr"));
-  const drawDistrictParks = drawDistrict ? regions.filter((r) => r.districtName === drawDistrict) : [];
+  const drawRegionNames = drawDistrict
+    ? [...new Set(regions.filter((r) => r.districtName === drawDistrict).map((r) => r.regionName))].sort((a, b) =>
+        a.localeCompare(b, "tr")
+      )
+    : [];
+  const drawParkAreas =
+    drawDistrict && drawRegionName
+      ? regions.filter((r) => r.districtName === drawDistrict && r.regionName === drawRegionName)
+      : [];
   const drawPickRegion = regions.find((r) => r.id === Number(drawPickRegionId)) || null;
 
   return (
     <>
+      <PageHeader
+        title="Harita ve Cihazlar"
+        subtitle="Park ekipmanlarının konumlarını görüntüleyin ve yönetin."
+      />
+
+      {/* --- "Yeni Ekipman Ekle" formu haritanın ÜSTÜNDE: sayfaya girer girmez ekipman
+          eklemeye başlanabilsin diye. Formdaki "Haritadan Pinle" butonu aşağıdaki
+          haritaya kaydırıp konum seçtirir, sonra kullanıcıyı tekrar buraya getirir
+          (bkz. startPinningForForm / handleEmptyClick). --- */}
+      {manager && (
+        <div ref={formSectionRef} className="form-scroll-target">
+          <DeviceForm
+            regions={regions}
+            onCreated={handleFormDeviceCreated}
+            showLocationPicker={false}
+            location={formLocation}
+            onRequestPin={startPinningForForm}
+            requireLocation
+          />
+        </div>
+      )}
+
       <div ref={mapSectionRef} className="map-scroll-target">
       <Section
         title="İnteraktif Harita"
@@ -405,9 +444,11 @@ export default function MapPage() {
           )}
         </div>
 
-        {/* --- Admin: zone çizim kontrolleri — kademeli akış: İlçe seç → Park seç → Çiz.
-            Eskiden tüm bölgeler tek satırda yan yana buton olarak listeleniyordu; bölge
-            sayısı arttıkça bu dağınık/okunaksız hale geliyordu. --- */}
+        {/* --- Admin: zone çizim kontrolleri — kademeli akış: İlçe seç → Bölge seç →
+            Park Alanı seç → Çiz. Bir bölge (regionName) aynı ilçede birden fazla park
+            alanına (ayrı Region kaydı) karşılık gelebildiği için üç seviyeli. Eskiden
+            tüm bölgeler tek satırda yan yana buton olarak listeleniyordu; bölge sayısı
+            arttıkça bu dağınık/okunaksız hale geliyordu. --- */}
         {admin && (
           <div className="map-toolbar" style={{ flexWrap: "wrap" }}>
             {drawingRegionId == null ? (
@@ -418,6 +459,7 @@ export default function MapPage() {
                     value={drawDistrict}
                     onChange={(e) => {
                       setDrawDistrict(e.target.value);
+                      setDrawRegionName("");
                       setDrawPickRegionId("");
                     }}
                     style={{ minWidth: 150 }}
@@ -433,16 +475,37 @@ export default function MapPage() {
 
                 {drawDistrict && (
                   <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--color-text-muted)" }}>
-                    2. Park:
+                    2. Bölge:
+                    <select
+                      value={drawRegionName}
+                      onChange={(e) => {
+                        setDrawRegionName(e.target.value);
+                        setDrawPickRegionId("");
+                      }}
+                      style={{ minWidth: 160 }}
+                    >
+                      <option value="">— Bölge seçin —</option>
+                      {drawRegionNames.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {drawRegionName && (
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--color-text-muted)" }}>
+                    3. Park Alanı:
                     <select
                       value={drawPickRegionId}
                       onChange={(e) => setDrawPickRegionId(e.target.value)}
-                      style={{ minWidth: 180 }}
+                      style={{ minWidth: 190 }}
                     >
-                      <option value="">— Park seçin —</option>
-                      {drawDistrictParks.map((r) => (
+                      <option value="">— Park alanı seçin —</option>
+                      {drawParkAreas.map((r) => (
                         <option key={r.id} value={r.id}>
-                          {r.regionName} {r.boundary ? "(sınır çizili)" : "(sınır yok)"}
+                          {r.irrigationAreaName || `Park Alanı #${r.id}`} {r.boundary ? "(sınır çizili)" : "(sınır yok)"}
                         </option>
                       ))}
                     </select>
@@ -452,7 +515,7 @@ export default function MapPage() {
                 {drawPickRegion && (
                   <>
                     <Button size="sm" variant="primary" onClick={() => startDrawing(drawPickRegion)}>
-                      3. {drawPickRegion.boundary ? "Sınırı Düzenle" : "Çizmeye Başla"}
+                      4. {drawPickRegion.boundary ? "Sınırı Düzenle" : "Çizmeye Başla"}
                     </Button>
                     {drawPickRegion.boundary && (
                       <Button size="sm" variant="danger" onClick={() => clearZone(drawPickRegion)}>
@@ -535,6 +598,7 @@ export default function MapPage() {
           onRemove={handleRemove}
           onEmptyClick={manager ? handleEmptyClick : null}
           onViewFaultReport={(device) => navigate(`/cihazlar/${device.id}`)}
+          onReportFault={(device) => setReportingDevice(device)}
           regions={regions}
           showZones={showZones}
           selectedRegionId={selectedRegionId}
@@ -548,28 +612,13 @@ export default function MapPage() {
       </Section>
       </div>
 
-      {/* --- Cihaz yönetimi: form + arama/filtre/sayfalama + dışa aktarma. Harita ile
-          AYNI sayfaya taşındı (eskiden ayrı "Cihazlar" sekmesindeydi). Sadece manager
+      {/* --- Cihaz yönetimi: arama/filtre/sayfalama + dışa aktarma. Harita ile AYNI
+          sayfaya taşındı (eskiden ayrı "Cihazlar" sekmesindeydi). Sadece manager
           (ADMIN+HEADGARDENER) görür — mevcut yetkilendirme aynen korunuyor.
-          Bu sayfada zaten yukarıda büyük bir interaktif harita var, üstelik haritaya
-          tıklayarak konum seçip hızlıca ekipman ekleme akışı da mevcut (bkz. "pendingLocation").
-          Bu yüzden DeviceForm'un kendi mini haritasını (LocationPicker) BURADA GÖSTERMİYORUZ —
-          aynı sayfada iki ayrı Leaflet haritası olması kafa karıştırıcı oluyordu. Konum,
-          formdan boş bırakılıp sonradan üstteki haritadan (pin sürükleyerek) da ayarlanabilir. --- */}
+          "Yeni Ekipman Ekle" formu artık haritanın ÜSTÜNDE (yukarıda) — burada sadece
+          mevcut kayıtlı ekipmanların listesi/filtreleri var. --- */}
       {manager && (
-        <>
-          <div ref={formSectionRef} className="form-scroll-target">
-            <DeviceForm
-              regions={regions}
-              onCreated={handleFormDeviceCreated}
-              showLocationPicker={false}
-              location={formLocation}
-              onRequestPin={startPinningForForm}
-              requireLocation
-            />
-          </div>
-
-          <Section
+        <Section
             title="Kayıtlı Ekipmanlar"
             actions={
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -618,7 +667,6 @@ export default function MapPage() {
             <DeviceTable devices={managedDevices} onToggleStatus={toggleStatus} onDelete={handleRemove} canDelete={admin} />
             <PaginationControls page={page} totalPages={totalPages} totalElements={totalElements} onPageChange={setPage} />
           </Section>
-        </>
       )}
 
       <ReportFaultModal

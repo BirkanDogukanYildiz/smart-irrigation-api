@@ -3,6 +3,7 @@ import Loading from "../common/Loading";
 import Button from "../common/Button";
 import { formatDateTime } from "../../utils/format";
 import { actionColors, resourceLabel } from "../../utils/auditActions";
+import { roleLabel } from "../../utils/roles";
 import "../../styles/table.css";
 
 export default function LogTable({ logs, onViewDetail }) {
@@ -30,7 +31,7 @@ export default function LogTable({ logs, onViewDetail }) {
                 <td className="cell-muted">{formatDateTime(l.timestamp)}</td>
                 <td>
                   {l.username}
-                  {l.userRole && <span className="cell-muted"> ({l.userRole})</span>}
+                  {l.userRole && <span className="cell-muted"> ({roleLabel(l.userRole)})</span>}
                 </td>
                 <td>
                   <span
