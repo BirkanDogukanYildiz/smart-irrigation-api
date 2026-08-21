@@ -14,6 +14,8 @@ import RegionDetailPage from "./pages/RegionDetailPage";
 import UsersPage from "./pages/UsersPage";
 import LogsPage from "./pages/LogsPage";
 import RequestsPage from "./pages/RequestsPage";
+import ProfilePage from "./pages/ProfilePage";
+import CategoriesPage from "./pages/CategoriesPage";
 import CitizenDashboardPage from "./pages/citizen/CitizenDashboardPage";
 import CitizenParksPage from "./pages/citizen/CitizenParksPage";
 import CitizenRequestPage from "./pages/citizen/CitizenRequestPage";
@@ -51,6 +53,8 @@ export default function App() {
             >
               <Route path="/" element={<DashboardPage />} />
               <Route path="/harita" element={<MapPage />} />
+              <Route path="/kategoriler" element={<CategoriesPage />} />
+              <Route path="/profil" element={<ProfilePage />} />
 
               {/* Detay sayfaları: liste sayfalarının aksine (isManager/isAdmin gerektirir),
                   tekil kayıt görüntüleme tüm rollere açık — backend GET endpoint'leri zaten

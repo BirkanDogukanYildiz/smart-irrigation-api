@@ -1,0 +1,183 @@
+/* --- Sidebar tabanlı personel arayüzü (referans mockup) ---
+   Eski üst header+nav (layout.css .app-header/.app-nav) yerine geçer. Aynı renk/
+   spacing/radius token'larını (index.css) kullanır — kurumsal kimlik korunuyor. */
+
+.app-shell-sidebar {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+/* --- Sol sidebar --- */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  transition: width 0.15s ease;
+}
+.sidebar.is-collapsed { width: 68px; }
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.sidebar-toggle {
+  background: none;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 15px;
+}
+.sidebar-toggle:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.sidebar-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sidebar-brand-title { font-size: 14.5px; font-weight: 700; color: var(--color-text); white-space: nowrap; }
+.sidebar-brand-sub { font-size: 11px; color: var(--color-text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.sidebar-nav { padding: var(--space-3); display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.sidebar-group-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-text-faint);
+  padding: var(--space-4) var(--space-2) var(--space-1);
+}
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sidebar-link:hover { background: var(--color-primary-lighter); color: var(--color-primary-dark); }
+.sidebar-link.is-active { background: var(--color-primary-light); color: var(--color-primary-dark); font-weight: 700; }
+.sidebar-link-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+.sidebar.is-collapsed .sidebar-link { justify-content: center; }
+
+/* --- Üst topbar --- */
+.topbar {
+  height: var(--header-height);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-5);
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  gap: var(--space-4);
+}
+.topbar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--color-text-faint);
+  max-width: 320px;
+  flex: 1;
+}
+.topbar-search:hover { border-color: var(--color-border-strong); color: var(--color-text-muted); }
+.topbar-right { display: flex; align-items: center; gap: var(--space-4); flex-shrink: 0; }
+
+.topbar-user { position: relative; }
+.topbar-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+}
+.topbar-user-btn:hover { background: var(--color-bg); }
+.topbar-avatar, .topbar-avatar-img {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.topbar-avatar {
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+}
+.topbar-avatar-img { object-fit: cover; }
+.topbar-user-text { text-align: left; }
+.topbar-user-name { font-size: 13px; font-weight: 700; color: var(--color-text); line-height: 1.25; }
+.topbar-user-role { font-size: 11px; color: var(--color-text-faint); }
+
+.topbar-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  min-width: 160px;
+  padding: 6px;
+  z-index: 30;
+}
+.topbar-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+.topbar-menu-item:hover { background: var(--color-bg); }
+
+.sidebar-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-main {
+  flex: 1;
+  padding: var(--space-5);
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 860px) {
+  .sidebar { position: fixed; z-index: 40; box-shadow: var(--shadow-lg); }
+  .sidebar:not(.is-collapsed) { width: 240px; }
+  .sidebar.is-collapsed { width: 0; border: none; overflow: hidden; }
+  .topbar-search { display: none; }
+  .dashboard-two-col { grid-template-columns: 1fr !important; }
+}

@@ -52,3 +52,12 @@ export function updateDeviceLocation(id, latitude, longitude) {
 export function deleteDevice(id) {
   return apiCall(`/api/devices/delete/${id}`, { method: "DELETE" });
 }
+
+// PUT /api/devices/mode/{id} { mode: "NORMAL" | "BAKIMDA" | "PASIF" }
+// Status'tan (arıza) bağımsız — bkz. utils/deviceMode.js
+export function updateDeviceMode(id, mode) {
+  return apiCall(`/api/devices/mode/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ mode }),
+  });
+}

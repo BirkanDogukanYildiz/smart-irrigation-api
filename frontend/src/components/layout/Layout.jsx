@@ -1,16 +1,21 @@
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import Header from "./Header";
-import NavBar from "./NavBar";
-import "../../styles/layout.css";
+import Sidebar from "./Sidebar";
+import TopBar from "./TopBar";
+import "../../styles/sidebar.css";
 
 export default function Layout() {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
-    <div className="app-shell">
-      <Header />
-      <NavBar />
-      <main className="app-main container">
-        <Outlet />
-      </main>
+    <div className="app-shell-sidebar">
+      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+      <div className="sidebar-content">
+        <TopBar />
+        <main className="sidebar-main">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

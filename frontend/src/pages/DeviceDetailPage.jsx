@@ -7,16 +7,21 @@ import Loading from "../components/common/Loading";
 import StatusBadge from "../components/common/StatusBadge";
 import AssetTypeBadge from "../components/common/AssetTypeBadge";
 import FaultAgeBadge from "../components/common/FaultAgeBadge";
-import { getDevice } from "../api/devices";
+import { getDevice, updateDeviceMode } from "../api/devices";
 import { deviceDisplayName } from "../utils/deviceDisplay";
 import { regionDisplayName } from "../utils/regionDisplay";
 import { formatDateTime } from "../utils/format";
 import { durationSince } from "../utils/durationSince";
+import { DEVICE_MODES, deviceModeLabel } from "../utils/deviceMode";
+import { useAuth } from "../context/AuthContext";
+import { isManager } from "../utils/roles";
 
 // Modal/panel yerine kalıcı, paylaşılabilir bir URL (/cihazlar/:id). Sadece mevcut
 // backend verisini (GET /api/devices/device-info/{id}) gösterir, fake veri yok.
 export default function DeviceDetailPage() {
   const { id } = useParams();
+  const { role } = useAuth();
+  const manager = isManager(role);
   const [device, setDevice] = useState(null);
   const [error, setError] = useState("");
 
@@ -27,6 +32,12 @@ export default function DeviceDetailPage() {
       .then(setDevice)
       .catch((e) => setError(e.message));
   }, [id]);
+
+  function handleModeChange(mode) {
+    updateDeviceMode(device.id, mode)
+      .then(setDevice)
+      .catch((e) => window.alert("Mod güncellenemedi: " + e.message));
+  }
 
   if (error) {
     return (
@@ -57,6 +68,26 @@ export default function DeviceDetailPage() {
             <AssetTypeBadge type={device.assetType} />
             <StatusBadge status={device.status} />
             {device.status === "FAULTY" && <FaultAgeBadge since={device.statusChangedAt} />}
+            {manager ? (
+              <select
+                value={device.mode || DEVICE_MODES.NORMAL}
+                onChange={(e) => handleModeChange(e.target.value)}
+                style={{ fontSize: 12.5 }}
+              >
+                {Object.values(DEVICE_MODES).map((m) => (
+                  <option key={m} value={m}>
+                    {deviceModeLabel(m)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              device.mode &&
+              device.mode !== DEVICE_MODES.NORMAL && (
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-warning)" }}>
+                  {deviceModeLabel(device.mode)}
+                </span>
+              )
+            )}
           </div>
         }
       />

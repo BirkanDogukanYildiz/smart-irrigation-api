@@ -1,20 +1,106 @@
-.login-page {
+/* --- Kimlik doğrulama ekranları (Giriş / Giriş Kapısı): iki panelli, kurumsal
+   ama görsel olarak zengin bir düzen. Sol panel: marka/atmosfer (dekoratif SVG
+   desen + ikon kompozisyonu — emoji YOK). Sağ panel: gerçek form. Mobilde sol
+   panel gizlenir, sadece form kalır. --- */
+.auth-shell {
   min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--color-bg);
+}
+@media (max-width: 860px) {
+  .auth-shell { grid-template-columns: 1fr; }
+}
+
+.auth-visual {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--color-primary-dark), var(--color-primary));
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--space-7) var(--space-6);
+}
+@media (max-width: 860px) { .auth-visual { display: none; } }
+
+.auth-visual-pattern {
+  position: absolute;
+  inset: 0;
+  opacity: 0.14;
+  background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px);
+  background-size: 26px 26px;
+}
+.auth-visual-glow {
+  position: absolute;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.16), transparent 70%);
+  bottom: -180px;
+  right: -140px;
+}
+.auth-visual-content {
+  position: relative;
+  z-index: 1;
+}
+.auth-visual-icons {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-end;
+  margin: var(--space-6) 0;
+}
+.auth-visual-icon-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg);
+  backdrop-filter: blur(2px);
+}
+.auth-visual-icon-badge.is-lg { width: 84px; height: 84px; }
+.auth-visual-title {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  max-width: 380px;
+}
+.auth-visual-sub {
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+  max-width: 360px;
+  margin-top: var(--space-3);
+  line-height: 1.6;
+}
+.auth-visual-footer {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
+}
+
+.auth-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--space-5);
   position: relative;
 }
-.login-theme-toggle {
+.auth-theme-toggle {
   position: absolute;
   top: var(--space-5);
   right: var(--space-5);
 }
 @media (max-width: 480px) {
-  .login-theme-toggle { top: var(--space-3); right: var(--space-3); }
+  .auth-theme-toggle { top: var(--space-3); right: var(--space-3); }
 }
+
 .login-card {
   width: 100%;
   max-width: 380px;
@@ -39,6 +125,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   padding: var(--space-6) var(--space-5);
 }
 .login-body h2 {
@@ -65,57 +152,72 @@
   border-radius: 4px;
   color: var(--color-primary-dark);
 }
+.login-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
 
 /* --- Giriş kapısı: "Vatandaş Girişi" / "Personel Girişi" seçim kartları --- */
 .gate-card {
-  max-width: 640px;
+  max-width: 440px;
 }
 .gate-choices {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-}
-@media (max-width: 560px) {
-  .gate-choices { grid-template-columns: 1fr; }
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 .gate-choice {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
+  align-items: center;
+  gap: var(--space-4);
   text-align: left;
   background: var(--color-surface);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
-  padding: var(--space-5);
+  padding: var(--space-4) var(--space-5);
   cursor: pointer;
   transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 .gate-choice:hover {
   border-color: var(--color-primary);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
 }
+.gate-choice-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.gate-choice-body { flex: 1; min-width: 0; }
 .gate-choice-badge {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--color-primary);
 }
 .gate-choice h3 {
-  margin: 0;
-  font-size: 16px;
+  margin: 2px 0 2px;
+  font-size: 15px;
 }
 .gate-choice p {
   margin: 0;
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--color-text-muted);
   line-height: 1.5;
 }
 .gate-choice-arrow {
-  margin-top: var(--space-2);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-primary);
+  color: var(--color-text-faint);
+  flex-shrink: 0;
 }
+.gate-choice:hover .gate-choice-arrow { color: var(--color-primary); }

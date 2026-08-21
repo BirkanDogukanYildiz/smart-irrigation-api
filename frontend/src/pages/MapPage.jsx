@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Section from "../components/common/Section";
 import Alert from "../components/common/Alert";
+import Icon from "../components/common/Icon";
 import Button from "../components/common/Button";
 import PaginationControls from "../components/common/PaginationControls";
 import DeviceMap from "../components/map/DeviceMap";
@@ -9,7 +10,7 @@ import RegionInfoPanel from "../components/map/RegionInfoPanel";
 import DeviceForm from "../components/devices/DeviceForm";
 import DeviceTable from "../components/devices/DeviceTable";
 import ReportFaultModal from "../components/devices/ReportFaultModal";
-import { listDevices, searchDevices, createDevice, updateDeviceStatus, deleteDevice, updateDeviceLocation } from "../api/devices";
+import { listDevices, searchDevices, createDevice, updateDeviceStatus, updateDeviceMode, deleteDevice, updateDeviceLocation } from "../api/devices";
 import { listRegions, updateRegionBoundary } from "../api/regions";
 import { exportDevicesCsv, exportFaultsCsv } from "../api/export";
 import { useAuth } from "../context/AuthContext";
@@ -29,6 +30,7 @@ const PAGE_SIZE = 20;
 export default function MapPage() {
   const { role } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const manager = isManager(role);
   const admin = isAdmin(role);
   const mapApiRef = useRef(null);
@@ -79,7 +81,9 @@ export default function MapPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
-  const [typeFilter, setTypeFilter] = useState("");
+  // "Kategoriler" sayfasından "/harita?tur=X" ile gelindiğinde alt tablo/harita
+  // filtresi otomatik o türe ayarlanır — sayfa yüklenirken bir kereliğine okunuyor.
+  const [typeFilter, setTypeFilter] = useState(() => searchParams.get("tur") || "");
   const [statusFilter, setStatusFilter] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -294,6 +298,15 @@ export default function MapPage() {
     }
   }
 
+  // Mod (Bakımda/Pasif/Normal): Status'tan (arıza) bağımsız — bkz. backend
+  // SprinklerInfo.mode. Onay istemeye gerek yok, tek tık ile anında uygulanır
+  // (arıza bildirmenin aksine geri dönüşü kolay/zararsız bir işlem).
+  function handleModeChange(device, mode) {
+    updateDeviceMode(device.id, mode)
+      .then(refreshAll)
+      .catch((e) => window.alert("Mod güncellenemedi: " + e.message));
+  }
+
   async function submitFaultReport(description, faultType, photoDataUrl) {
     await updateDeviceStatus(reportingDevice.id, "FAULTY", description, faultType, photoDataUrl);
     setReportingDevice(null);
@@ -364,7 +377,9 @@ export default function MapPage() {
 
         {pickingForForm && (
           <div className="map-picking-banner">
-            <span>📍 Aşağıdaki formda eklenecek ekipman için haritada bir konuma tıklayın.</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Icon name="pin" size={15} /> Aşağıdaki formda eklenecek ekipman için haritada bir konuma tıklayın.
+            </span>
             <Button size="sm" variant="secondary" onClick={() => setPickingForForm(false)}>
               İptal
             </Button>
@@ -664,7 +679,13 @@ export default function MapPage() {
                 {totalElements} ekipman bulundu.
               </p>
             )}
-            <DeviceTable devices={managedDevices} onToggleStatus={toggleStatus} onDelete={handleRemove} canDelete={admin} />
+            <DeviceTable
+              devices={managedDevices}
+              onToggleStatus={toggleStatus}
+              onDelete={handleRemove}
+              canDelete={admin}
+              onModeChange={handleModeChange}
+            />
             <PaginationControls page={page} totalPages={totalPages} totalElements={totalElements} onPageChange={setPage} />
           </Section>
       )}

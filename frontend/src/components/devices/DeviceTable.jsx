@@ -5,11 +5,19 @@ import FaultAgeBadge from "../common/FaultAgeBadge";
 import Button from "../common/Button";
 import EmptyState from "../common/EmptyState";
 import Loading from "../common/Loading";
+import { DEVICE_MODES, deviceModeLabel } from "../../utils/deviceMode";
 import "../../styles/table.css";
+
+const MODE_TONE = {
+  BAKIMDA: { bg: "var(--color-warning-bg)", fg: "var(--color-warning)" },
+  PASIF: { bg: "var(--color-bg)", fg: "var(--color-text-faint)" },
+};
 
 // readOnly: true olduğunda İşlemler sütunu (arıza bildir/çalışıyor işaretle/çıkar)
 // gizlenir — bölge detay sayfası gibi salt-görüntüleme bağlamlarında kullanılır.
-export default function DeviceTable({ devices, onToggleStatus, onDelete, canDelete, readOnly = false }) {
+// onModeChange: opsiyonel — verilmezse Mod sütunu salt-metin rozet olarak kalır
+// (ör. görüntüleme bağlamlarında düzenleme yetkisi olmayan roller için).
+export default function DeviceTable({ devices, onToggleStatus, onDelete, canDelete, onModeChange, readOnly = false }) {
   if (devices === null) return <Loading />;
   if (devices.length === 0) return <EmptyState>Henüz kayıtlı ekipman yok.</EmptyState>;
 
@@ -23,6 +31,7 @@ export default function DeviceTable({ devices, onToggleStatus, onDelete, canDele
             <th>No</th>
             <th>Tür</th>
             <th>Durum</th>
+            <th>Mod</th>
             <th>Açık Süresi</th>
             <th>Arıza Açıklaması</th>
             <th>Detay</th>
@@ -40,6 +49,44 @@ export default function DeviceTable({ devices, onToggleStatus, onDelete, canDele
               </td>
               <td>
                 <StatusBadge status={d.status} />
+              </td>
+              <td>
+                {onModeChange ? (
+                  <select
+                    value={d.mode || DEVICE_MODES.NORMAL}
+                    onChange={(e) => onModeChange(d, e.target.value)}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      border: "none",
+                      borderRadius: 999,
+                      padding: "3px 8px",
+                      background: MODE_TONE[d.mode]?.bg || "var(--color-bg)",
+                      color: MODE_TONE[d.mode]?.fg || "var(--color-text-faint)",
+                    }}
+                  >
+                    {Object.values(DEVICE_MODES).map((m) => (
+                      <option key={m} value={m}>
+                        {deviceModeLabel(m)}
+                      </option>
+                    ))}
+                  </select>
+                ) : d.mode && d.mode !== DEVICE_MODES.NORMAL ? (
+                  <span
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      padding: "3px 8px",
+                      borderRadius: 999,
+                      background: MODE_TONE[d.mode]?.bg,
+                      color: MODE_TONE[d.mode]?.fg,
+                    }}
+                  >
+                    {deviceModeLabel(d.mode)}
+                  </span>
+                ) : (
+                  <span className="cell-muted">—</span>
+                )}
               </td>
               <td>{d.status === "FAULTY" ? <FaultAgeBadge since={d.statusChangedAt} /> : "—"}</td>
               <td className="cell-muted">{d.status === "FAULTY" ? d.description : "—"}</td>

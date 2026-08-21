@@ -4,6 +4,7 @@ import PageHeader from "../../components/common/PageHeader";
 import Alert from "../../components/common/Alert";
 import Loading from "../../components/common/Loading";
 import EmptyState from "../../components/common/EmptyState";
+import Icon from "../../components/common/Icon";
 import CitizenParkMap from "../../components/map/CitizenParkMap";
 import { getPublicParks } from "../../api/public";
 import { regionDisplayName } from "../../utils/regionDisplay";
@@ -65,15 +66,14 @@ export default function CitizenParksPage() {
                     height: 36,
                     borderRadius: "var(--radius-sm)",
                     background: "var(--color-primary-light)",
+                    color: "var(--color-primary)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 18,
                     marginBottom: 4,
                   }}
-                  aria-hidden="true"
                 >
-                  🌳
+                  <Icon name="park" size={18} />
                 </div>
                 <h3 style={{ margin: 0 }}>{regionDisplayName(p)}</h3>
                 {p.description && (

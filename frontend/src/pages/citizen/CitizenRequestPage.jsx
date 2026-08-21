@@ -3,6 +3,7 @@ import Section from "../../components/common/Section";
 import PageHeader from "../../components/common/PageHeader";
 import Alert from "../../components/common/Alert";
 import Button from "../../components/common/Button";
+import Icon from "../../components/common/Icon";
 import { getPublicRegionOptions, createCitizenRequest } from "../../api/public";
 import { REQUEST_TOPICS, requestTopicLabel } from "../../utils/requestTopics";
 import { regionDisplayName } from "../../utils/regionDisplay";
@@ -81,15 +82,13 @@ export default function CitizenRequestPage() {
                 borderRadius: "50%",
                 background: "var(--color-success-bg)",
                 color: "var(--color-success)",
-                fontSize: 24,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto var(--space-4)",
               }}
-              aria-hidden="true"
             >
-              ✓
+              <Icon name="check" size={24} strokeWidth={2.25} />
             </div>
             <h3 style={{ marginBottom: 6 }}>Talebiniz alındı</h3>
             <Alert type="success">İlgili ekip talebinizi en kısa sürede inceleyecektir.</Alert>
